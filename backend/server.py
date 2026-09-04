@@ -369,6 +369,7 @@ async def create_batch(prefix: str, actor: dict, data_type: str, payload: dict, 
         "actor_id": actor["_id"],
         "actor_name": actor["name"],
         "actor_role": actor["role"],
+        "actor_city": actor.get("city", ""),
         "created_at": datetime.now(timezone.utc).isoformat(),
         "status": "verified",
         **payload,
@@ -498,6 +499,42 @@ async def public_verify(product_id: str):
         harvest_coords = match_city_coords(hb.get("location"))
     retail_coords = match_city_coords(rb.get("store_location")) or match_city_coords(sb.get("destination") if sb else "")
 
+    # Build multi-stop journey coordinates for every stage in the chain
+    stage_meta = {
+        "HB": {"label_id": "Petani", "label_en": "Farmer", "emoji": "🌱", "color": "#059669"},
+        "CB": {"label_id": "Pengepul", "label_en": "Collector", "emoji": "📦", "color": "#D97706"},
+        "PB": {"label_id": "Pabrik", "label_en": "Manufacturer", "emoji": "🏭", "color": "#2563EB"},
+        "SB": {"label_id": "Distributor", "label_en": "Distributor", "emoji": "🚚", "color": "#7C3AED"},
+        "RB": {"label_id": "Ritel", "label_en": "Retailer", "emoji": "🏪", "color": "#DC2626"},
+    }
+    journey_coords = []
+    for c in chain:
+        pref = c["prefix"]
+        coords = None
+        if pref == "HB":
+            coords = parse_gps(c.get("gps")) or match_city_coords(c.get("location"))
+        elif pref == "SB":
+            coords = match_city_coords(c.get("destination"))
+        elif pref == "RB":
+            coords = match_city_coords(c.get("store_location"))
+        if not coords:
+            coords = match_city_coords(c.get("actor_city", ""))
+        if coords:
+            meta = stage_meta.get(pref, {})
+            journey_coords.append({
+                "stage": pref,
+                "batch_id": c["batch_id"],
+                "actor_name": c.get("actor_name"),
+                "date": c.get("created_at"),
+                "lat": coords["lat"],
+                "lng": coords["lng"],
+                "city": coords.get("city", c.get("actor_city", "")),
+                "label_id": meta.get("label_id"),
+                "label_en": meta.get("label_en"),
+                "emoji": meta.get("emoji"),
+                "color": meta.get("color"),
+            })
+
     # Increment scan counter
     await db.verify_counts.update_one(
         {"product_id": product_id},
@@ -521,6 +558,7 @@ async def public_verify(product_id: str):
         "scan_count": scan_count,
         "harvest_coords": harvest_coords,
         "retail_coords": retail_coords,
+        "journey_coords": journey_coords,
         "journey": [
             {"stage": c["prefix"], "batch_id": c["batch_id"], "date": c["created_at"]}
             for c in chain
@@ -719,17 +757,17 @@ async def seed_db():
 
     # Seed roles
     seed_users = [
-        ("farmer@tembakau.id", "Pak Supardi", "farmer", "Kelompok Tani Temanggung", "Ketua Kelompok", "+62 813-1000-0001"),
-        ("collector@tembakau.id", "Bu Ratna", "collector", "UD Pengumpul Jaya", "Manajer Gudang", "+62 813-2000-0002"),
-        ("manufacturer@tembakau.id", "Bapak Hendra", "manufacturer", "PT Sampoerna Simulasi", "Kepala Produksi", "+62 813-3000-0003"),
-        ("distributor@tembakau.id", "Ibu Lestari", "distributor", "PT Logistik Nusantara", "Kepala Armada", "+62 813-4000-0004"),
-        ("retailer@tembakau.id", "Pak Yanto", "retailer", "Toko Rokok Sentosa", "Pemilik", "+62 813-5000-0005"),
+        ("farmer@tembakau.id", "Pak Supardi", "farmer", "Kelompok Tani Temanggung", "Ketua Kelompok", "+62 813-1000-0001", "Temanggung"),
+        ("collector@tembakau.id", "Bu Ratna", "collector", "UD Pengumpul Jaya", "Manajer Gudang", "+62 813-2000-0002", "Temanggung"),
+        ("manufacturer@tembakau.id", "Bapak Hendra", "manufacturer", "PT Sampoerna Simulasi", "Kepala Produksi", "+62 813-3000-0003", "Surabaya"),
+        ("distributor@tembakau.id", "Ibu Lestari", "distributor", "PT Logistik Nusantara", "Kepala Armada", "+62 813-4000-0004", "Semarang"),
+        ("retailer@tembakau.id", "Pak Yanto", "retailer", "Toko Rokok Sentosa", "Pemilik", "+62 813-5000-0005", "Jakarta"),
     ]
-    for email, name, role, company, position, contact in seed_users:
+    for email, name, role, company, position, contact, city in seed_users:
         if not await db.users.find_one({"email": email}):
             await db.users.insert_one({
                 "email": email, "password_hash": hash_password("Password@123"),
-                "name": name, "role": role, "company": company, "position": position, "contact": contact,
+                "name": name, "role": role, "company": company, "position": position, "contact": contact, "city": city,
                 "created_at": datetime.now(timezone.utc).isoformat(),
             })
 
@@ -741,7 +779,7 @@ async def seed_db():
         dist = await db.users.find_one({"role": "distributor"})
         retail = await db.users.find_one({"role": "retailer"})
 
-        def a(u): return {"_id": str(u["_id"]), "name": u["name"], "role": u["role"]}
+        def a(u): return {"_id": str(u["_id"]), "name": u["name"], "role": u["role"], "city": u.get("city", "")}
 
         h = await create_batch("HB", a(farmer), "harvest", {
             "variety": "Srintil", "location": "Temanggung, Jawa Tengah",

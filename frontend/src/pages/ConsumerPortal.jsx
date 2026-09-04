@@ -38,22 +38,33 @@ function redIcon() {
   });
 }
 
-function ProvenanceMap({ from, to, lang }) {
+function stageIcon(color, emoji) {
+  return L.divIcon({
+    className: "custom-pin",
+    html: `<div style="background:${color};width:34px;height:34px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.35);"><div style="transform:rotate(45deg);font-size:15px;text-align:center;line-height:28px;">${emoji}</div></div>`,
+    iconSize: [34, 34], iconAnchor: [17, 34],
+  });
+}
+
+function ProvenanceMap({ stops, lang }) {
   const mapRef = useRef(null);
   const mapInst = useRef(null);
   useEffect(() => {
-    if (!from || !to || !mapRef.current) return;
+    if (!stops || stops.length < 2 || !mapRef.current) return;
     if (mapInst.current) { mapInst.current.remove(); mapInst.current = null; }
-    const bounds = L.latLngBounds([[from.lat, from.lng], [to.lat, to.lng]]);
-    const map = L.map(mapRef.current, { zoomControl: true, scrollWheelZoom: false }).fitBounds(bounds, { padding: [30, 30] });
+    const bounds = L.latLngBounds(stops.map((s) => [s.lat, s.lng]));
+    const map = L.map(mapRef.current, { zoomControl: true, scrollWheelZoom: false }).fitBounds(bounds, { padding: [40, 40] });
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap", maxZoom: 18 }).addTo(map);
-    L.marker([from.lat, from.lng], { icon: greenIcon() }).addTo(map).bindPopup(`<b>${lang === "id" ? "Kebun Asal" : "Origin Farm"}</b><br/>${from.city || ""}`);
-    L.marker([to.lat, to.lng], { icon: redIcon() }).addTo(map).bindPopup(`<b>${lang === "id" ? "Toko Ritel" : "Retail Store"}</b><br/>${to.city || ""}`);
-    L.polyline([[from.lat, from.lng], [to.lat, to.lng]], { color: "#2D8B55", weight: 3, dashArray: "8,10", opacity: 0.8 }).addTo(map);
+    stops.forEach((s, i) => {
+      const label = lang === "en" ? s.label_en : s.label_id;
+      L.marker([s.lat, s.lng], { icon: stageIcon(s.color, s.emoji) }).addTo(map)
+        .bindPopup(`<b>${i + 1}. ${label}</b><br/><span style="font-family:monospace;font-size:11px;">${s.batch_id}</span><br/>${s.city || ""}<br/><span style="color:#64748B;font-size:10px;">${s.actor_name || ""}</span>`);
+    });
+    L.polyline(stops.map((s) => [s.lat, s.lng]), { color: "#2D8B55", weight: 3, dashArray: "8,10", opacity: 0.85 }).addTo(map);
     mapInst.current = map;
     return () => { map.remove(); mapInst.current = null; };
-  }, [from, to, lang]);
-  return <div ref={mapRef} className="w-full h-64 rounded-lg overflow-hidden border border-slate-200" data-testid="provenance-map" />;
+  }, [stops, lang]);
+  return <div ref={mapRef} className="w-full h-72 rounded-lg overflow-hidden border border-slate-200" data-testid="provenance-map" />;
 }
 
 export default function ConsumerPortal() {
@@ -170,13 +181,17 @@ export default function ConsumerPortal() {
               </CardContent>
             </Card>
 
-            {result.harvest_coords && result.retail_coords && (
+            {result.journey_coords && result.journey_coords.length >= 2 && (
               <Card className="glass-card"><CardContent className="p-5">
                 <div className="text-[10px] uppercase tracking-widest text-emerald-700 font-mono mb-3 flex items-center gap-2"><MapPin className="w-3.5 h-3.5"/>{t("map_title")}</div>
-                <ProvenanceMap from={result.harvest_coords} to={result.retail_coords} lang={lang} />
-                <div className="grid grid-cols-2 gap-3 mt-3 text-xs">
-                  <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-emerald-600"/> <span className="text-slate-700"><strong>{t("map_from")}</strong>: {result.cultivation_area}</span></div>
-                  <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-rose-600"/> <span className="text-slate-700"><strong>{t("map_to")}</strong>: {result.retail_coords.city}</span></div>
+                <ProvenanceMap stops={result.journey_coords} lang={lang} />
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3 text-xs">
+                  {result.journey_coords.map((s, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <span className="w-3 h-3 rounded-full shrink-0" style={{ background: s.color }}/>
+                      <span className="text-slate-700 truncate"><strong>{i + 1}. {lang === "en" ? s.label_en : s.label_id}</strong> — {s.city}</span>
+                    </div>
+                  ))}
                 </div>
               </CardContent></Card>
             )}

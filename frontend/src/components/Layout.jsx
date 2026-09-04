@@ -1,5 +1,7 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLang } from "@/contexts/LangContext";
 import { Button } from "@/components/ui/button";
@@ -32,8 +34,41 @@ export default function Layout() {
   const { user, logout } = useAuth();
   const { t, lang, toggle } = useLang();
   const nav = useNavigate();
+  const seenExceptions = useRef(new Set());
+  const initialized = useRef(false);
   const allowed = NAV.filter((n) => n.roles === "all" || n.roles.includes(user?.role));
   const roleLabel = (lang === "id" ? ROLE_LABEL_ID : ROLE_LABEL_EN)[user?.role];
+
+  useEffect(() => {
+    if (user?.role !== "admin") return;
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const { data } = await api.get("/exceptions?status=open");
+        if (cancelled) return;
+        if (!initialized.current) {
+          data.forEach((e) => seenExceptions.current.add(e._id));
+          initialized.current = true;
+          return;
+        }
+        data.forEach((e) => {
+          if (!seenExceptions.current.has(e._id)) {
+            seenExceptions.current.add(e._id);
+            const sev = e.severity || "medium";
+            const title = lang === "id"
+              ? `Anomali baru terdeteksi (${sev.toUpperCase()})`
+              : `New anomaly detected (${sev.toUpperCase()})`;
+            const desc = `${e.batch_id || ""} · ${e.message}`;
+            if (sev === "critical" || sev === "high") toast.error(title, { description: desc, duration: 8000 });
+            else toast.warning(title, { description: desc, duration: 8000 });
+          }
+        });
+      } catch (err) {}
+    };
+    poll();
+    const timer = setInterval(poll, 15000);
+    return () => { cancelled = true; clearInterval(timer); };
+  }, [user?.role, lang]);
 
   return (
     <div className="min-h-screen flex text-slate-900">
