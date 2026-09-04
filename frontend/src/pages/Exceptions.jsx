@@ -56,8 +56,10 @@ export default function Exceptions() {
         <h1 className="text-3xl font-bold flex items-center gap-3"><AlertTriangle className="w-8 h-8 text-rose-700"/>Exception Log</h1>
       </div>
       <div className="space-y-2">
-        {items.map((e) => (
-          <Card key={e._id} className="glass-card border-slate-200"><CardContent className="p-4 flex items-center gap-4">
+        {items.map((e) => {
+          const isFocused = searchParams.get("focus") === e._id || (target && target._id === e._id);
+          return (
+          <Card key={e._id} ref={isFocused ? focusRef : null} className={`glass-card border-slate-200 ${isFocused ? "ring-2 ring-emerald-400 ring-offset-2 ring-offset-slate-50" : ""}`}><CardContent className="p-4 flex items-center gap-4">
             <Badge className={`${sev[e.severity]} border shrink-0 text-[10px] uppercase`}>{e.severity}</Badge>
             <div className="flex-1 min-w-0">
               <div className="text-sm font-semibold truncate">{e.message}</div>

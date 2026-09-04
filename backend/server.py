@@ -19,7 +19,13 @@ import httpx
 import jwt
 from bson import ObjectId
 from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends, Query, BackgroundTasks, Header
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.units import cm
+import io
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, EmailStr, Field
@@ -857,6 +863,12 @@ async def build_and_send_digest():
         return
     count = len(open_ex)
     today = datetime.now(timezone.utc).strftime("%d %B %Y")
+    # Sign a short-lived JWT token so the PDF link stays accessible from an inbox
+    pdf_token = jwt.encode(
+        {"type": "anomaly_digest_pdf", "exp": datetime.now(timezone.utc) + timedelta(days=7)},
+        JWT_SECRET, algorithm=JWT_ALG,
+    )
+    pdf_url = f"{FRONTEND_URL}/api/reports/anomaly-digest.pdf?token={pdf_token}"
     if count == 0:
         rows = '<tr><td colspan="4" style="padding:16px;color:#059669;text-align:center;">Tidak ada anomali terbuka hari ini. Semua rantai pasok sehat.</td></tr>'
     else:
@@ -890,6 +902,8 @@ async def build_and_send_digest():
         f'<thead><tr style="background:#F1F5F9;"><th align="left" style="padding:10px 12px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#64748B;">Batch</th><th align="left" style="padding:10px 12px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#64748B;">Severity</th><th align="left" style="padding:10px 12px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#64748B;">Deskripsi</th><th style="padding:10px 12px;"></th></tr></thead>'
         f'<tbody>{rows}</tbody></table>'
         f'<p style="color:#334155;font-size:13px;line-height:1.6;margin:20px 0 0;">Buka <a href="{escape(FRONTEND_URL)}/exceptions" style="color:#059669;text-decoration:underline;">dashboard anomali</a> untuk menindaklanjuti.</p>'
+        f'<p style="text-align:center;margin:20px 0 0;"><a href="{escape(pdf_url)}" style="display:inline-block;padding:12px 24px;background:#0F5132;color:#FFFFFF;font-size:14px;font-weight:600;text-decoration:none;border-radius:8px;">📄 Download Laporan PDF</a></p>'
+        f'<p style="color:#94A3B8;font-size:11px;line-height:1.5;margin:8px 0 0;text-align:center;">Link berlaku 7 hari — cocok untuk arsip.</p>'
         f'</td></tr>'
         f'<tr><td style="padding:16px 32px;background:#F8FAFC;border-top:1px solid #E2E8F0;">'
         f'<p style="color:#64748B;font-size:11px;line-height:1.5;margin:0;">Dikirim oleh {escape(EMAIL_FROM_NAME)}. Kami tidak pernah meminta kata sandi lewat email.</p>'
@@ -961,6 +975,70 @@ async def build_and_send_weekly_trend():
     )
     email_id = await send_email(to=admin_email, subject=f"Laporan Tren Mingguan — {week_label}", html=html)
     logger.info(f"Weekly trend sent to {admin_email}: id={email_id}")
+
+# ============ PDF Report ============
+@app.get("/api/reports/anomaly-digest.pdf")
+async def anomaly_digest_pdf(token: str = Query(...)):
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALG])
+        if payload.get("type") != "anomaly_digest_pdf":
+            raise HTTPException(status_code=401, detail="Invalid token type")
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    open_ex = await db.exceptions.find({"status": "open"}).sort("created_at", -1).to_list(500)
+    today = datetime.now(timezone.utc).strftime("%d %B %Y")
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=2*cm, rightMargin=2*cm, topMargin=2*cm, bottomMargin=2*cm, title=f"Anomaly Digest {today}")
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle("title", parent=styles["Heading1"], textColor=colors.HexColor("#0F5132"), fontSize=20, spaceAfter=6)
+    sub_style = ParagraphStyle("sub", parent=styles["Normal"], textColor=colors.HexColor("#64748B"), fontSize=10, spaceAfter=16)
+    body_style = ParagraphStyle("body", parent=styles["Normal"], textColor=colors.HexColor("#334155"), fontSize=11, spaceAfter=10, leading=15)
+
+    story = [
+        Paragraph("Ringkasan Anomali Rantai Pasok", title_style),
+        Paragraph(f"Sintesa Tembakau Nusantara &middot; {today} &middot; {len(open_ex)} anomali terbuka", sub_style),
+        Paragraph("Berikut daftar anomali rantai pasok yang <b>masih terbuka</b> per pagi ini. Tindak lanjuti di dashboard.", body_style),
+        Spacer(1, 8),
+    ]
+    if not open_ex:
+        story.append(Paragraph("<font color='#059669'>Tidak ada anomali terbuka. Semua rantai pasok sehat.</font>", body_style))
+    else:
+        data = [["Batch", "Severity", "Deskripsi", "Waktu"]]
+        for e in open_ex:
+            data.append([
+                str(e.get("batch_id", "-")),
+                str(e.get("severity", "medium")).upper(),
+                str(e.get("message", ""))[:80],
+                str(e.get("created_at", ""))[:19],
+            ])
+        table = Table(data, colWidths=[3*cm, 2.2*cm, 8*cm, 3.8*cm], repeatRows=1)
+        table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0F5132")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, 0), 10),
+            ("BOTTOMPADDING", (0, 0), (-1, 0), 10),
+            ("TOPPADDING", (0, 0), (-1, 0), 8),
+            ("FONTSIZE", (0, 1), (-1, -1), 9),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F8FAFC")]),
+            ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#E2E8F0")),
+            ("LEFTPADDING", (0, 0), (-1, -1), 8),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+            ("TOPPADDING", (0, 1), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 1), (-1, -1), 6),
+        ]))
+        story.append(table)
+    story.append(Spacer(1, 20))
+    story.append(Paragraph("<font size='9' color='#94A3B8'>Dibuat otomatis oleh sistem — arsipkan untuk audit trail.</font>", body_style))
+    doc.build(story)
+    buf.seek(0)
+    return StreamingResponse(buf, media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="anomaly-digest-{today.replace(" ", "-")}.pdf"'})
 
 # ============ Cron Endpoint ============
 @app.post("/api/cron/anomaly-digest")
