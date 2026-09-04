@@ -1,0 +1,246 @@
+{
+  "project_name": "Tobacco Supply Chain Blockchain Traceability MVP (Sintesa Tembakau Nusantara)",
+  "language": "Bahasa Indonesia",
+  "archetype": "Swiss Precision & Tactical Blockchain Enterprise",
+  "theme_strategy": "Tobacco Leaf Green + Blockchain Navy + Clean Crisp White Accents (Linear / Vercel style high-density layout)",
+  "typography": {
+    "heading_font": "Plus Jakarta Sans, sans-serif",
+    "body_font": "Plus Jakarta Sans, sans-serif",
+    "mono_font": "JetBrains Mono, monospace",
+    "weights": {
+      "light": "300",
+      "regular": "400",
+      "medium": "500",
+      "semibold": "600",
+      "bold": "700",
+      "extra_bold": "800"
+    },
+    "hierarchy": {
+      "h1": "text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-none",
+      "h2": "text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight leading-tight",
+      "h3": "text-xl sm:text-2xl font-semibold tracking-tight",
+      "h4": "text-lg sm:text-xl font-medium tracking-normal",
+      "body": "text-base sm:text-sm leading-relaxed text-slate-300",
+      "caption": "text-xs font-mono uppercase tracking-widest text-slate-400"
+    },
+    "forbidden_fonts": ["Inter", "Roboto", "Space Grotesk"]
+  },
+  "colors": {
+    "background_primary": "#0A0E17",
+    "background_secondary": "#111827",
+    "background_card": "#162032",
+    "background_card_hover": "#1E2D44",
+    "border_subtle": "rgba(255, 255, 255, 0.08)",
+    "border_active": "rgba(45, 139, 85, 0.4)",
+    "primary_green": "#2D8B55",
+    "primary_green_dark": "#1B5E38",
+    "primary_green_light": "#4ADE80",
+    "blockchain_navy": "#0F172A",
+    "blockchain_navy_accent": "#1E293B",
+    "blockchain_cyan": "#06B6D4",
+    "text_primary": "#F8FAFC",
+    "text_secondary": "#94A3B8",
+    "text_muted": "#64748B",
+    "status_badges": {
+      "verified": {
+        "bg": "bg-emerald-950/80",
+        "border": "border-emerald-500/30",
+        "text": "text-emerald-400",
+        "badge": "✓ Terverifikasi"
+      },
+      "pending": {
+        "bg": "bg-amber-950/80",
+        "border": "border-amber-500/30",
+        "text": "text-amber-400",
+        "badge": "⚡ Menunggu Konfirmasi"
+      },
+      "exception": {
+        "bg": "bg-rose-950/80",
+        "border": "border-rose-500/30",
+        "text": "text-rose-400",
+        "badge": "⚠ Anomali / Ekspsi"
+      }
+    },
+    "forbidden_colors": ["#7351B7", "#1B93A4"]
+  },
+  "spacing_and_layout": {
+    "container_max_width": "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8",
+    "dashboard_grid": "grid grid-cols-1 md:grid-cols-4 lg:grid-cols-12 gap-4 lg:gap-6",
+    "padding_card": "p-5 sm:p-6 lg:p-8",
+    "padding_section": "py-8 sm:py-12 lg:py-16",
+    "border_radius": "rounded-xl border border-slate-800",
+    "header_nav": "sticky top-0 z-50 backdrop-blur-xl bg-slate-950/80 border-b border-slate-800/80 px-6 py-4"
+  },
+  "roles": [
+    {
+      "id": "farmer",
+      "title": "Petani Tembakau",
+      "scope": "Registrasi Panen & Lokasi Kebun",
+      "icon": "Sprout",
+      "badge_color": "text-emerald-400 bg-emerald-950/60"
+    },
+    {
+      "id": "collector",
+      "title": "Pengepul / Tengkulak",
+      "scope": "Penerimaan, Penimbangan & Pengeringan Daun",
+      "icon": "Boxes",
+      "badge_color": "text-amber-400 bg-amber-950/60"
+    },
+    {
+      "id": "manufacturer",
+      "title": "Produsen / Pabrik Cigarette",
+      "scope": "Inspec QC AI, Skala Produksi & Cukai",
+      "icon": "Factory",
+      "badge_color": "text-blue-400 bg-blue-950/60"
+    },
+    {
+      "id": "distributor",
+      "title": "Distributor Logistik",
+      "scope": "Pengiriman, IoT Suhu/Kelembaban & Segel Cerdas",
+      "icon": "Truck",
+      "badge_color": "text-purple-400 bg-purple-950/60"
+    },
+    {
+      "id": "retailer",
+      "title": "Ritel / Toko Resmi",
+      "scope": "Penerimaan Stok & Penjualan Akhir",
+      "icon": "Store",
+      "badge_color": "text-cyan-400 bg-cyan-950/60"
+    },
+    {
+      "id": "consumer",
+      "title": "Konsumen Publik",
+      "scope": "Verifikasi Keaslian QR & Rekam Jejak Batch",
+      "icon": "QrCode",
+      "badge_color": "text-green-400 bg-green-950/60"
+    }
+  ],
+  "pages_and_components": {
+    "login_page": {
+      "layout": "Split screen or glass card centered with background gradient blur",
+      "features": ["Quick Role Switching Demo Buttons (Petani, Pengepul, Pabrik, Distributor, Ritel, Admin)", "Blockchain identity signature preview", "Bilingual ID wording ('Masuk ke Blockchain Traceability')"]
+    },
+    "role_dashboard": {
+      "kpi_cards": [
+        "Total Batch Terdaftar (Kg / Ton)",
+        "Status Validasi Smart Contract (%)",
+        "Sensors IoT Aktif (Suhu & Kelembaban)",
+        "Eksul/Anomali Kualitas Terdeteksi"
+      ],
+      "network_status": "Status Node Blockchain (3 Active Validators, Block Height #142,892, Latency 14ms)",
+      "supply_chain_visualization": "Horizontal Journey Batch Timeline dengan node status berkilau (Farmer → Collector → Manufacturer → Distributor → Retailer → Consumer)"
+    },
+    "farmer_harvest_form": {
+      "fields": ["Nomor Batch Kebun", "Varietas Tembakau (Virginia, Srintil, Madura, Kasturi)", "Berat Total (Kg)", "Koordinat GPS Kebun", "Tanggal Panen", "Tingkat Kadar Air (%)"],
+      "action": "Terbitkan Smart Contract Panen (SC-001)"
+    },
+    "collector_recording": {
+      "fields": ["ID Batch Petani", "Berat Diterima", "Grade Daun (A/B/C)", "Metode Pengeringan (Rajang/Sun-cured/Flue-cured)", "Catatan Sortir"],
+      "action": "Sign & Forward to Manufacturer"
+    },
+    "manufacturer_production": {
+      "fields": ["Batch ID Pengepul", "Hasil Penimbangan Masuk", "No. Pita Cukai Hasil Tembakau (CHT)", "Hasil AI Quality Inspection Card", "Nomor Seri Kemasan Kemasan"],
+      "action": "Cetak QR Code Batch & Commit Blockchain Block"
+    },
+    "distributor_shipment": {
+      "fields": ["ID Karton/Palet", "Tujuan Ritel", "GPS Live Tracker", "Batas Suhu Maksimum (°C)", "Batas Kelembaban (%)"],
+      "action": "Aktifkan IoT Smart Lock & Buat Surat Jalan Digital"
+    },
+    "retailer_sales": {
+      "fields": ["Scan QR Produk", "Status Penerimaan Paket", "Tanggal Dipajang", "Status Terjual ke Konsumen"],
+      "action": "Verifikasi Penerimaan Toko & Finalisasi Chain"
+    },
+    "traceability_search_page": {
+      "description": "Pencarian cepat ID Batch / Hash transaksi / No. Seri produk dengan preview instan journey timeline",
+      "features": ["Input pencarian dengan auto-complete ID Batch", "Filter berdasarkan Varietas & Status Validasi", "Visualisasi Pohon Silsilah Batch"]
+    },
+    "blockchain_explorer": {
+      "description": "Tampilan blok nyata dengan animasi hash chain",
+      "components": [
+        "Status Header (Block Height, Total Transactions, Avg Block Time, Active Consensus Node)",
+        "Tabel / List Blok Terbaru dengan Hash SHA-256",
+        "Modal / Drawer Detail Transaksi Blockchain & Raw JSON Payload"
+      ]
+    },
+    "smart_contract_engine_ui": {
+      "contracts": [
+        {"id": "SC-001", "name": "Harvest & Provenance Verifier", "status": "Deployed & Active"},
+        {"id": "SC-002", "name": "IoT Temperature Threshold Enforcer", "status": "Deployed & Active"},
+        {"id": "SC-003", "name": "Excise Tax & Serialization Guard", "status": "Deployed & Active"}
+      ],
+      "features": ["Live Console Log eksekusi Smart Contract", "Trigger simulasi event (e.g. Suhu melebihi 35°C -> Auto Exception Trigger)"]
+    },
+    "quality_iot_panel": {
+      "components": [
+        "Kartu Sensor Realtime (Suhu Air Storage 24.5°C, Kelembaban Air 65%, Kadar Air Tembakau 12%)",
+        "Modul AI Quality Inspection (Klasifikasi foto daun tembakau: Grade A Super, Defect score 1.2%, Moisture optimal)",
+        "Grafik Telemetri IoT Line Chart (Recharts / Canvas)"
+      ]
+    },
+    "exception_and_audit_log": {
+      "exception_log": "Daftar anomali rantai pasok (misal: Kadar air terlalu tinggi saat pengiriman, Selisih berat >2% antara Petani & Pengepul)",
+      "audit_log": "Log transaksi tidak dapat diubah (Immutable Log) lengkap dengan transaksi koreksi bertanda tangan digital"
+    },
+    "consumer_qr_portal": {
+      "type": "Minimalist Mobile-First Public Portal",
+      "badge": "✓ TERVERIFIKASI OTENTIK (ASLI INDONESIA)",
+      "sections": [
+        "Status Otentisitas Produk Besar dengan Glow Emerald",
+        "Asal Usul Kebun & Nama Petani (e.g. Pak Supardi, Temanggung, Jawa Tengah)",
+        "Peta Perjalanan Logistik (Peta / Node Steps)",
+        "Riwayat Sertifikat Kualitas & Pita Cukai Resmi",
+        "Tombol Unduh Sertifikat Keaslian PDF/Digital"
+      ]
+    },
+    "management_analytics_dashboard": {
+      "charts": [
+        "Volume Distribusi per Provinsi (Jawa Tengah, Jawa Timur, NTB)",
+        "Persentase Kemurnian & Grade Tembakau",
+        "Lead Time Rantai Pasok (Petani -> Konsumen in Days)",
+        "Tingkat Kepatuhan Smart Contract"
+      ]
+    },
+    "admin_user_management": {
+      "features": ["Daftar Akun Aktor (Petani, Pengepul, Pabrik, Distributor, Ritel)", "Form Undang Pengguna Baru", "Manajemen Public/Private Key Pair (Simulasi)"]
+    },
+    "qr_generator_and_scanner": {
+      "features": [
+        "Modal QR Code Generator untuk Batch Baru (dapat diunduh / dicetak)",
+        "Simulator Reader / Scanner Kamera Web (dengan preset barcode scanner untuk demo cepat)"
+      ]
+    }
+  },
+  "motion_and_microinteractions": {
+    "libraries": ["framer-motion", "lucide-react"],
+    "transitions": "transition-all duration-200 ease-in-out (Avoid global transition: all on transforms)",
+    "effects": [
+      "Hover scaling pada kartu status (hover:-translate-y-0.5 hover:shadow-lg hover:shadow-emerald-950/40)",
+      "Glow pulsing pada node blockchain yang aktif (animate-pulse emerald glow)",
+      "Staggered entrance animation untuk daftar transaksi blok",
+      "Smooth tab transition antara Modul Dashboard dan Explorer"
+    ]
+  },
+  "image_urls": {
+    "tobacco_leaf_closeup": "https://images.unsplash.com/photo-1758414083942-bc9f82e026b0?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NjZ8MHwxfHNlYXJjaHwyfHxncmVlbiUyMHRvYmFjY28lMjBwbGFudCUyMGZhcm0lMjBhZ3JpY3VsdHVyZSUyMGZpZWxkfGVufDB8fHx8MTc4ODQ5MDkxNHww&ixlib=rb-4.1.0&q=85",
+    "tobacco_farm_field": "https://images.unsplash.com/photo-1758414083946-df1b3b44ce84?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NjZ8MHwxfHNlYXJjaHwxfHxncmVlbiUyMHRvYmFjY28lMjBwbGFudCUyMGZhcm0lMjBhZ3JpY3VsdHVyZSUyMGZpZWxkfGVufDB8fHx8MTc4ODQ5MDkxNHww&ixlib=rb-4.1.0&q=85",
+    "warehouse_crates": "https://images.unsplash.com/photo-1784462373256-bf6c1f27f00f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA0MTJ8MHwxfHNlYXJjaHw0fHx0b2JhY2NvJTIwbGVhZiUyMGZhcm0lMjBzdXBwbHklMjBjaGFpbiUyMGhhcnZlc3QlMjB3YXJlaG91c2V8ZW58MHx8fHwxNzg4NDkwOTA2fDA&ixlib=rb-4.1.0&q=85",
+    "blockchain_cubes_dark": "https://images.unsplash.com/photo-1639322537231-2f206e06af84?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxODl8MHwxfHNlYXJjaHszfHxibG9ja2NoYWluJTIwc3VwcGx5JTIwY2hhaW4lMjBuZXR3b3JrJTIwdGVjaG5vbG9neSUyMGN5YmVyfGVufDB8fHx8MTc4ODQ5MDkxNHww&ixlib=rb-4.1.0&q=85",
+    "blockchain_cubes_blue": "https://images.unsplash.com/photo-1666816943035-15c29931e975?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxODl8MHwxfHNlYXJjaHwyfHxibG9ja2NoYWluJTIwc3VwcGx5JTIwY2hhaW4lMjBuZXR3b3JrJTIwdGVjaG5vbG9neSUyMGN5YmVyfGVufDB8fHx8MTc4ODQ5MDkxNHww&ixlib=rb-4.1.0&q=85"
+  },
+  "instructions_to_main_agent": [
+    "Bahasa Indonesia Saja: Semua teks label UI, status, navigasi, serta opsi harus menggunakan Bahasa Indonesia yang tepat dan lugas.",
+    "Beli ruang napas ekstra: Gunakan padding dan gap yang luas (gap-4 hingga gap-6 di dashboard, p-6 di kartu).",
+    "Gunakan data-testid di setiap tombol, input, tab, link, dan elemen kunci untuk kestabilan pengujian otomatis (kebab-case, e.g., data-testid='farmer-batch-input').",
+    "Pastikan badge status memiliki kontras warna jelas: Hijau Emerald untuk Verified, Kuning Amber untuk Pending, Merah Rose untuk Exception.",
+    "Implementasikan Consumer Portal sebagai modal atau tampilan publik independen dengan badge '✓ Otentik' berukuran besar, siap dipindai dari HP/QR Code.",
+    "Gunakan modul Smart Contract dan AI Quality Inspection dengan data simulasi yang kaya dan interaktif (dapat diklik untuk memicu event log baru)."
+  ],
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
+    "Never use generic centered layouts or unstyled default HTML select/inputs. Use high contrast, custom-styled dark theme components.",
+    "Do NOT use Inter or Roboto for headers. Maintain Plus Jakarta Sans across headings and body.",
+    "Every interactive element MUST include data-testid attribute in kebab-case format.",
+    "Do not use dark colors as gradients; keep backgrounds solid or subtle tinted zinc/navy with 1px border lines.",
+    "Layer cards using 1px borders with opacity (border-slate-800/80) and subtle backdrop-blur.",
+    "Use sonner for toast notifications when smart contracts execute or batches are committed to blockchain."
+  ]
+}
