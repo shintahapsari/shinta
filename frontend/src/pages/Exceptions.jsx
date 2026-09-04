@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,12 +14,30 @@ import { AlertTriangle } from "lucide-react";
 export default function Exceptions() {
   const { user } = useAuth();
   const { t } = useLang();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const focusRef = useRef(null);
   const [items, setItems] = useState([]);
   const [target, setTarget] = useState(null);
   const [note, setNote] = useState("");
 
   const load = () => api.get("/exceptions").then(({ data }) => setItems(data));
   useEffect(() => { load(); }, []);
+
+  // Deep-link focus: if ?focus=<id> present, scroll to that exception and open resolve dialog
+  useEffect(() => {
+    const focusId = searchParams.get("focus");
+    if (!focusId || items.length === 0) return;
+    const target = items.find((e) => e._id === focusId);
+    if (target) {
+      setTimeout(() => {
+        focusRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        if (user?.role === "admin" && target.status === "open") setTarget(target);
+      }, 200);
+      // Clear param so refresh doesn't re-open
+      searchParams.delete("focus");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [items, searchParams, user, setSearchParams]);
 
   const resolve = async () => {
     try {
@@ -50,7 +69,8 @@ export default function Exceptions() {
                 : <Badge className="bg-rose-100 border border-rose-300 text-rose-700">{t("open")}</Badge>
             ) : <Badge className="bg-emerald-100 border border-emerald-300 text-emerald-700">{t("resolved")}</Badge>}
           </CardContent></Card>
-        ))}
+          );
+        })}
         {items.length === 0 && <div className="text-center text-slate-500 py-12">{t("no_anomaly")}</div>}
       </div>
 

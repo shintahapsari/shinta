@@ -858,17 +858,20 @@ async def build_and_send_digest():
     count = len(open_ex)
     today = datetime.now(timezone.utc).strftime("%d %B %Y")
     if count == 0:
-        rows = '<tr><td style="padding:16px;color:#059669;text-align:center;">Tidak ada anomali terbuka hari ini. Semua rantai pasok sehat.</td></tr>'
+        rows = '<tr><td colspan="4" style="padding:16px;color:#059669;text-align:center;">Tidak ada anomali terbuka hari ini. Semua rantai pasok sehat.</td></tr>'
     else:
         rows = ""
         for e in open_ex[:50]:
             sev = escape((e.get("severity") or "medium").upper())
             sev_color = {"CRITICAL": "#DC2626", "HIGH": "#DC2626", "MEDIUM": "#D97706", "LOW": "#D97706"}.get(sev, "#64748B")
+            exc_id = str(e.get("_id", ""))
+            resolve_url = f"{FRONTEND_URL}/exceptions?focus={exc_id}"
             rows += (
                 f'<tr>'
                 f'<td style="padding:10px 12px;border-bottom:1px solid #E2E8F0;font-family:monospace;font-size:12px;color:#0F172A;">{escape(str(e.get("batch_id", "-")))}</td>'
                 f'<td style="padding:10px 12px;border-bottom:1px solid #E2E8F0;"><span style="display:inline-block;padding:2px 8px;border-radius:12px;background:{sev_color}20;color:{sev_color};font-size:11px;font-weight:600;">{sev}</span></td>'
                 f'<td style="padding:10px 12px;border-bottom:1px solid #E2E8F0;font-size:13px;color:#334155;">{escape(str(e.get("message", "")))}</td>'
+                f'<td style="padding:10px 12px;border-bottom:1px solid #E2E8F0;text-align:right;"><a href="{escape(resolve_url)}" style="display:inline-block;padding:6px 12px;background:#059669;color:#FFFFFF;font-size:12px;font-weight:600;text-decoration:none;border-radius:6px;">Resolve →</a></td>'
                 f'</tr>'
             )
     html = (
@@ -884,7 +887,7 @@ async def build_and_send_digest():
         f'<p style="color:#334155;font-size:14px;line-height:1.6;margin:0 0 16px;">Halo Admin,</p>'
         f'<p style="color:#334155;font-size:14px;line-height:1.6;margin:0 0 20px;">Berikut daftar anomali rantai pasok yang <strong>masih terbuka</strong> per pagi ini. Silakan tinjau di dashboard.</p>'
         f'<table role="presentation" width="100%" style="border-collapse:collapse;border:1px solid #E2E8F0;border-radius:8px;overflow:hidden;">'
-        f'<thead><tr style="background:#F1F5F9;"><th align="left" style="padding:10px 12px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#64748B;">Batch</th><th align="left" style="padding:10px 12px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#64748B;">Severity</th><th align="left" style="padding:10px 12px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#64748B;">Deskripsi</th></tr></thead>'
+        f'<thead><tr style="background:#F1F5F9;"><th align="left" style="padding:10px 12px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#64748B;">Batch</th><th align="left" style="padding:10px 12px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#64748B;">Severity</th><th align="left" style="padding:10px 12px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#64748B;">Deskripsi</th><th style="padding:10px 12px;"></th></tr></thead>'
         f'<tbody>{rows}</tbody></table>'
         f'<p style="color:#334155;font-size:13px;line-height:1.6;margin:20px 0 0;">Buka <a href="{escape(FRONTEND_URL)}/exceptions" style="color:#059669;text-decoration:underline;">dashboard anomali</a> untuk menindaklanjuti.</p>'
         f'</td></tr>'
@@ -896,6 +899,69 @@ async def build_and_send_digest():
     email_id = await send_email(to=admin_email, subject=f"Ringkasan Anomali Harian — {today}", html=html)
     logger.info(f"Anomaly digest sent to {admin_email}: id={email_id} count={count}")
 
+async def build_and_send_weekly_trend():
+    """Weekly aggregate email: top variety, top region, avg quality compliance."""
+    admin_email = os.environ.get("ADMIN_EMAIL", "").strip()
+    if not admin_email:
+        return
+    week_ago = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+
+    variety_agg = {}
+    region_agg = {}
+    async for b in db.batches.find({"prefix": "HB", "created_at": {"$gte": week_ago}}):
+        v = b.get("variety", "Lain")
+        variety_agg[v] = variety_agg.get(v, 0) + b.get("weight_kg", 0)
+        r = (b.get("location") or "").split(",")[0].strip() or "Lain"
+        region_agg[r] = region_agg.get(r, 0) + b.get("weight_kg", 0)
+    top_variety = max(variety_agg.items(), key=lambda x: x[1], default=("-", 0))
+    top_region = max(region_agg.items(), key=lambda x: x[1], default=("-", 0))
+    total_kg = sum(variety_agg.values())
+
+    contracts_ok = await db.smart_contract_logs.count_documents({"result": {"$in": ["PASSED", "AUTHORIZED"]}, "timestamp": {"$gte": week_ago}})
+    contracts_total = await db.smart_contract_logs.count_documents({"timestamp": {"$gte": week_ago}})
+    compliance = round((contracts_ok / contracts_total) * 100, 1) if contracts_total else 100.0
+
+    new_batches = await db.batches.count_documents({"created_at": {"$gte": week_ago}})
+    open_ex = await db.exceptions.count_documents({"status": "open"})
+
+    week_label = datetime.now(timezone.utc).strftime("%d %B %Y")
+    kpi_card = lambda label, value, color: (
+        f'<td width="33%" style="padding:8px;"><div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:16px;">'
+        f'<div style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#64748B;font-family:monospace;">{escape(label)}</div>'
+        f'<div style="font-size:22px;font-weight:700;color:{color};margin-top:6px;">{escape(str(value))}</div>'
+        f'</div></td>'
+    )
+    html = (
+        f'<table role="presentation" width="100%" style="background:#F8FAFC;padding:24px 0;font-family:Arial,sans-serif;">'
+        f'<tr><td align="center">'
+        f'<table role="presentation" width="640" style="background:#FFFFFF;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(15,23,42,0.06);">'
+        f'<tr><td style="background:#0F5132;padding:24px 32px;">'
+        f'<div style="color:#4ADE80;font-size:11px;letter-spacing:2px;font-family:monospace;">SINTESA TEMBAKAU NUSANTARA · WEEKLY REPORT</div>'
+        f'<div style="color:#FFFFFF;font-size:22px;font-weight:700;margin-top:6px;">Laporan Tren Mingguan</div>'
+        f'<div style="color:#A7F3D0;font-size:13px;margin-top:4px;">Minggu berakhir {escape(week_label)}</div>'
+        f'</td></tr>'
+        f'<tr><td style="padding:24px 32px;">'
+        f'<p style="color:#334155;font-size:14px;line-height:1.6;margin:0 0 16px;">Selamat pagi Pimpinan,</p>'
+        f'<p style="color:#334155;font-size:14px;line-height:1.6;margin:0 0 20px;">Berikut ringkasan performa rantai pasok tembakau selama 7 hari terakhir:</p>'
+        f'<table role="presentation" width="100%" style="border-collapse:separate;border-spacing:0;">'
+        f'<tr>{kpi_card("Kepatuhan Kualitas", str(compliance) + "%", "#059669")}{kpi_card("Batch Baru", str(new_batches), "#2563EB")}{kpi_card("Anomali Terbuka", str(open_ex), "#DC2626" if open_ex > 0 else "#059669")}</tr>'
+        f'</table>'
+        f'<table role="presentation" width="100%" style="margin-top:20px;border:1px solid #E2E8F0;border-radius:10px;overflow:hidden;">'
+        f'<tr style="background:#F1F5F9;"><td style="padding:12px 16px;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:#64748B;font-family:monospace;">Kategori</td><td style="padding:12px 16px;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:#64748B;font-family:monospace;">Nilai</td></tr>'
+        f'<tr><td style="padding:14px 16px;border-top:1px solid #E2E8F0;color:#334155;font-size:13px;">Varietas Terbanyak</td><td style="padding:14px 16px;border-top:1px solid #E2E8F0;color:#0F172A;font-size:14px;font-weight:600;">{escape(str(top_variety[0]))} · {escape(str(top_variety[1]))} kg</td></tr>'
+        f'<tr><td style="padding:14px 16px;border-top:1px solid #E2E8F0;color:#334155;font-size:13px;">Wilayah Terbanyak</td><td style="padding:14px 16px;border-top:1px solid #E2E8F0;color:#0F172A;font-size:14px;font-weight:600;">{escape(str(top_region[0]))} · {escape(str(top_region[1]))} kg</td></tr>'
+        f'<tr><td style="padding:14px 16px;border-top:1px solid #E2E8F0;color:#334155;font-size:13px;">Total Volume Panen</td><td style="padding:14px 16px;border-top:1px solid #E2E8F0;color:#0F172A;font-size:14px;font-weight:600;">{escape(str(total_kg))} kg</td></tr>'
+        f'</table>'
+        f'<p style="text-align:center;margin:24px 0 0;"><a href="{escape(FRONTEND_URL)}/analytics" style="display:inline-block;padding:12px 24px;background:#059669;color:#FFFFFF;font-size:14px;font-weight:600;text-decoration:none;border-radius:8px;">Buka Dashboard Analitik →</a></p>'
+        f'</td></tr>'
+        f'<tr><td style="padding:16px 32px;background:#F8FAFC;border-top:1px solid #E2E8F0;">'
+        f'<p style="color:#64748B;font-size:11px;line-height:1.5;margin:0;">Dikirim oleh {escape(EMAIL_FROM_NAME)}. Kami tidak pernah meminta kata sandi lewat email.</p>'
+        f'</td></tr>'
+        f'</table></td></tr></table>'
+    )
+    email_id = await send_email(to=admin_email, subject=f"Laporan Tren Mingguan — {week_label}", html=html)
+    logger.info(f"Weekly trend sent to {admin_email}: id={email_id}")
+
 # ============ Cron Endpoint ============
 @app.post("/api/cron/anomaly-digest")
 async def anomaly_digest_cron(background: BackgroundTasks, request: Request):
@@ -905,6 +971,16 @@ async def anomaly_digest_cron(background: BackgroundTasks, request: Request):
     if not WEBHOOK_CRON_SECRET or not hmac.compare_digest(token, WEBHOOK_CRON_SECRET):
         raise HTTPException(status_code=401, detail="Unauthorized")
     background.add_task(build_and_send_digest)
+    return {"ok": True, "queued": True}
+
+@app.post("/api/cron/weekly-trend")
+async def weekly_trend_cron(background: BackgroundTasks, request: Request):
+    # Cron endpoints must ack 2xx immediately; enqueue/background the actual work.
+    auth = request.headers.get("Authorization", "")
+    token = auth[7:] if auth.startswith("Bearer ") else ""
+    if not WEBHOOK_CRON_SECRET or not hmac.compare_digest(token, WEBHOOK_CRON_SECRET):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    background.add_task(build_and_send_weekly_trend)
     return {"ok": True, "queued": True}
 
 # ============ Startup ============
