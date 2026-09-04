@@ -60,8 +60,27 @@ function ProvenanceMap({ stops, lang }) {
       L.marker([s.lat, s.lng], { icon: stageIcon(s.color, s.emoji) }).addTo(map)
         .bindPopup(`<b>${i + 1}. ${label}</b><br/><span style="font-family:monospace;font-size:11px;">${s.batch_id}</span><br/>${s.city || ""}<br/><span style="color:#64748B;font-size:10px;">${s.actor_name || ""}</span>`);
     });
-    L.polyline(stops.map((s) => [s.lat, s.lng]), { color: "#2D8B55", weight: 3, dashArray: "8,10", opacity: 0.85 }).addTo(map);
+    // Placeholder straight line while OSRM loads
+    const fallback = L.polyline(stops.map((s) => [s.lat, s.lng]), { color: "#94A3B8", weight: 2, dashArray: "4,8", opacity: 0.5 }).addTo(map);
     mapInst.current = map;
+
+    // Fetch real driving route from OSRM public demo
+    (async () => {
+      try {
+        const coords = stops.map((s) => `${s.lng},${s.lat}`).join(";");
+        const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`);
+        const data = await res.json();
+        if (data.routes?.[0]?.geometry?.coordinates) {
+          const latlngs = data.routes[0].geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+          if (mapInst.current) {
+            map.removeLayer(fallback);
+            L.polyline(latlngs, { color: "#2D8B55", weight: 4, opacity: 0.9 }).addTo(map);
+            map.fitBounds(L.latLngBounds(latlngs), { padding: [40, 40] });
+          }
+        }
+      } catch (e) { /* keep fallback */ }
+    })();
+
     return () => { map.remove(); mapInst.current = null; };
   }, [stops, lang]);
   return <div ref={mapRef} className="w-full h-72 rounded-lg overflow-hidden border border-slate-200" data-testid="provenance-map" />;

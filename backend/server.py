@@ -8,13 +8,17 @@ import hashlib
 import logging
 import random
 import secrets
+import asyncio
+import hmac
 from datetime import datetime, timezone, timedelta
+from html import escape
 from typing import Optional, List, Any
 
 import bcrypt
+import httpx
 import jwt
 from bson import ObjectId
-from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends, Query
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends, Query, BackgroundTasks, Header
 from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -28,6 +32,11 @@ db = client[os.environ['DB_NAME']]
 JWT_SECRET = os.environ["JWT_SECRET"]
 JWT_ALG = "HS256"
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+
+EMAIL_BASE_URL = "https://integrations.emergentagent.com"
+EMAIL_KEY = os.environ.get("EMERGENT_EMAIL_KEY", "")
+EMAIL_FROM_NAME = os.environ.get("EMAIL_FROM_NAME", "Sintesa Tembakau Nusantara")
+WEBHOOK_CRON_SECRET = os.environ.get("WEBHOOK_CRON_SECRET", "")
 
 app = FastAPI(title="Sintesa Tembakau Nusantara API")
 api = APIRouter(prefix="/api")
@@ -823,6 +832,80 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ============ Email Helper ============
+async def send_email(*, to: str, subject: str, html: str) -> Optional[str]:
+    if not EMAIL_KEY:
+        logger.warning("EMERGENT_EMAIL_KEY not configured; skipping email send")
+        return None
+    payload = {"to": [to], "subject": subject, "html": html, "from_name": EMAIL_FROM_NAME}
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(f"{EMAIL_BASE_URL}/api/v1/email/send",
+                                     headers={"X-Email-Key": EMAIL_KEY}, json=payload)
+        resp.raise_for_status()
+        return resp.json().get("id")
+    except Exception as e:
+        logger.error(f"Email send error: {e}")
+        return None
+
+async def build_and_send_digest():
+    """Background task: collect open exceptions and email admin."""
+    open_ex = await db.exceptions.find({"status": "open"}).sort("created_at", -1).to_list(500)
+    admin_email = os.environ.get("ADMIN_EMAIL", "").strip()
+    if not admin_email:
+        return
+    count = len(open_ex)
+    today = datetime.now(timezone.utc).strftime("%d %B %Y")
+    if count == 0:
+        rows = '<tr><td style="padding:16px;color:#059669;text-align:center;">Tidak ada anomali terbuka hari ini. Semua rantai pasok sehat.</td></tr>'
+    else:
+        rows = ""
+        for e in open_ex[:50]:
+            sev = escape((e.get("severity") or "medium").upper())
+            sev_color = {"CRITICAL": "#DC2626", "HIGH": "#DC2626", "MEDIUM": "#D97706", "LOW": "#D97706"}.get(sev, "#64748B")
+            rows += (
+                f'<tr>'
+                f'<td style="padding:10px 12px;border-bottom:1px solid #E2E8F0;font-family:monospace;font-size:12px;color:#0F172A;">{escape(str(e.get("batch_id", "-")))}</td>'
+                f'<td style="padding:10px 12px;border-bottom:1px solid #E2E8F0;"><span style="display:inline-block;padding:2px 8px;border-radius:12px;background:{sev_color}20;color:{sev_color};font-size:11px;font-weight:600;">{sev}</span></td>'
+                f'<td style="padding:10px 12px;border-bottom:1px solid #E2E8F0;font-size:13px;color:#334155;">{escape(str(e.get("message", "")))}</td>'
+                f'</tr>'
+            )
+    html = (
+        f'<table role="presentation" width="100%" style="background:#F8FAFC;padding:24px 0;font-family:Arial,sans-serif;">'
+        f'<tr><td align="center">'
+        f'<table role="presentation" width="640" style="background:#FFFFFF;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(15,23,42,0.06);">'
+        f'<tr><td style="background:#0F5132;padding:24px 32px;">'
+        f'<div style="color:#4ADE80;font-size:11px;letter-spacing:2px;font-family:monospace;">SINTESA TEMBAKAU NUSANTARA</div>'
+        f'<div style="color:#FFFFFF;font-size:22px;font-weight:700;margin-top:6px;">Ringkasan Anomali Harian</div>'
+        f'<div style="color:#A7F3D0;font-size:13px;margin-top:4px;">{escape(today)} · {count} anomali terbuka</div>'
+        f'</td></tr>'
+        f'<tr><td style="padding:24px 32px;">'
+        f'<p style="color:#334155;font-size:14px;line-height:1.6;margin:0 0 16px;">Halo Admin,</p>'
+        f'<p style="color:#334155;font-size:14px;line-height:1.6;margin:0 0 20px;">Berikut daftar anomali rantai pasok yang <strong>masih terbuka</strong> per pagi ini. Silakan tinjau di dashboard.</p>'
+        f'<table role="presentation" width="100%" style="border-collapse:collapse;border:1px solid #E2E8F0;border-radius:8px;overflow:hidden;">'
+        f'<thead><tr style="background:#F1F5F9;"><th align="left" style="padding:10px 12px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#64748B;">Batch</th><th align="left" style="padding:10px 12px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#64748B;">Severity</th><th align="left" style="padding:10px 12px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#64748B;">Deskripsi</th></tr></thead>'
+        f'<tbody>{rows}</tbody></table>'
+        f'<p style="color:#334155;font-size:13px;line-height:1.6;margin:20px 0 0;">Buka <a href="{escape(FRONTEND_URL)}/exceptions" style="color:#059669;text-decoration:underline;">dashboard anomali</a> untuk menindaklanjuti.</p>'
+        f'</td></tr>'
+        f'<tr><td style="padding:16px 32px;background:#F8FAFC;border-top:1px solid #E2E8F0;">'
+        f'<p style="color:#64748B;font-size:11px;line-height:1.5;margin:0;">Dikirim oleh {escape(EMAIL_FROM_NAME)}. Kami tidak pernah meminta kata sandi lewat email.</p>'
+        f'</td></tr>'
+        f'</table></td></tr></table>'
+    )
+    email_id = await send_email(to=admin_email, subject=f"Ringkasan Anomali Harian — {today}", html=html)
+    logger.info(f"Anomaly digest sent to {admin_email}: id={email_id} count={count}")
+
+# ============ Cron Endpoint ============
+@app.post("/api/cron/anomaly-digest")
+async def anomaly_digest_cron(background: BackgroundTasks, request: Request):
+    # Cron endpoints must ack 2xx immediately; enqueue/background the actual work.
+    auth = request.headers.get("Authorization", "")
+    token = auth[7:] if auth.startswith("Bearer ") else ""
+    if not WEBHOOK_CRON_SECRET or not hmac.compare_digest(token, WEBHOOK_CRON_SECRET):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    background.add_task(build_and_send_digest)
+    return {"ok": True, "queued": True}
 
 # ============ Startup ============
 @app.on_event("startup")

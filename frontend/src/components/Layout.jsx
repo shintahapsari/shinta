@@ -30,6 +30,30 @@ const NAV = [
 const ROLE_LABEL_ID = { admin: "Admin / Management", farmer: "Petani Tembakau", collector: "Pengepul", manufacturer: "Pabrik / Produsen", distributor: "Distributor", retailer: "Ritel" };
 const ROLE_LABEL_EN = { admin: "Admin / Management", farmer: "Tobacco Farmer", collector: "Collector", manufacturer: "Manufacturer", distributor: "Distributor", retailer: "Retailer" };
 
+// Soft two-note chime for critical anomalies via Web Audio API
+function playChime() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    const now = ctx.currentTime;
+    const notes = [{ f: 880, t: 0 }, { f: 1318.5, t: 0.18 }];
+    notes.forEach(({ f, t }) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = f;
+      gain.gain.setValueAtTime(0.0001, now + t);
+      gain.gain.exponentialRampToValueAtTime(0.28, now + t + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + t + 0.55);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now + t);
+      osc.stop(now + t + 0.6);
+    });
+    setTimeout(() => ctx.close?.(), 1200);
+  } catch (e) {}
+}
+
 export default function Layout() {
   const { user, logout } = useAuth();
   const { t, lang, toggle } = useLang();
@@ -59,8 +83,12 @@ export default function Layout() {
               ? `Anomali baru terdeteksi (${sev.toUpperCase()})`
               : `New anomaly detected (${sev.toUpperCase()})`;
             const desc = `${e.batch_id || ""} · ${e.message}`;
-            if (sev === "critical" || sev === "high") toast.error(title, { description: desc, duration: 8000 });
-            else toast.warning(title, { description: desc, duration: 8000 });
+            if (sev === "critical" || sev === "high") {
+              toast.error(title, { description: desc, duration: 8000 });
+              playChime();
+            } else {
+              toast.warning(title, { description: desc, duration: 8000 });
+            }
           }
         });
       } catch (err) {}
