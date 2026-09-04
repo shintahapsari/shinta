@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { useLang } from "@/contexts/LangContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FileCode2 } from "lucide-react";
 
 export default function SmartContracts() {
+  const { t } = useLang();
   const [contracts, setContracts] = useState([]);
   const [logs, setLogs] = useState([]);
 
@@ -25,7 +27,7 @@ export default function SmartContracts() {
     <div className="space-y-6">
       <div>
         <div className="text-xs font-mono uppercase tracking-widest text-emerald-700 mb-2">Smart Contract Engine (rules-based)</div>
-        <h1 className="text-3xl font-bold flex items-center gap-3"><FileCode2 className="w-8 h-8"/>Smart Contracts</h1>
+        <h1 className="text-3xl font-bold flex items-center gap-3 text-slate-900"><FileCode2 className="w-8 h-8"/>{t("contracts_title")}</h1>
       </div>
 
       <div className="grid md:grid-cols-3 gap-4">

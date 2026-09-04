@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLang } from "@/contexts/LangContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,7 @@ import { AlertTriangle } from "lucide-react";
 
 export default function Exceptions() {
   const { user } = useAuth();
+  const { t } = useLang();
   const [items, setItems] = useState([]);
   const [target, setTarget] = useState(null);
   const [note, setNote] = useState("");
@@ -21,9 +23,9 @@ export default function Exceptions() {
   const resolve = async () => {
     try {
       await api.post(`/exceptions/${target._id}/resolve`, { resolution: note });
-      toast.success("Anomali diselesaikan");
+      toast.success(t("anomaly_resolved"));
       setTarget(null); setNote(""); load();
-    } catch (err) { toast.error(err.response?.data?.detail || "Gagal"); }
+    } catch (err) { toast.error(err.response?.data?.detail || t("save_fail")); }
   };
 
   const sev = { critical: "bg-rose-100 border-rose-300 text-rose-700", high: "bg-rose-100 border-rose-300 text-rose-700", medium: "bg-amber-100 border-amber-300 text-amber-700", low: "bg-amber-100 border-amber-300 text-amber-700" };
@@ -44,20 +46,20 @@ export default function Exceptions() {
             </div>
             {e.status === "open" ? (
               user?.role === "admin" ?
-                <Button data-testid={`resolve-exception-${e._id}`} size="sm" onClick={() => setTarget(e)} className="bg-emerald-600 hover:bg-emerald-700">Selesaikan</Button>
-                : <Badge className="bg-rose-100 border border-rose-300 text-rose-700">TERBUKA</Badge>
-            ) : <Badge className="bg-emerald-100 border border-emerald-300 text-emerald-700">RESOLVED</Badge>}
+                <Button data-testid={`resolve-exception-${e._id}`} size="sm" onClick={() => setTarget(e)} className="bg-emerald-600 hover:bg-emerald-700 text-white">{t("resolve")}</Button>
+                : <Badge className="bg-rose-100 border border-rose-300 text-rose-700">{t("open")}</Badge>
+            ) : <Badge className="bg-emerald-100 border border-emerald-300 text-emerald-700">{t("resolved")}</Badge>}
           </CardContent></Card>
         ))}
-        {items.length === 0 && <div className="text-center text-slate-500 py-12">Tidak ada anomali terdeteksi 🎉</div>}
+        {items.length === 0 && <div className="text-center text-slate-500 py-12">{t("no_anomaly")}</div>}
       </div>
 
       <Dialog open={!!target} onOpenChange={() => setTarget(null)}>
         <DialogContent className="glass-card border-slate-200">
-          <DialogHeader><DialogTitle>Selesaikan Anomali</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t("resolve_anomaly")}</DialogTitle></DialogHeader>
           <p className="text-sm text-slate-600">{target?.message}</p>
-          <Textarea data-testid="resolution-textarea" placeholder="Tindakan penyelesaian..." value={note} onChange={(e) => setNote(e.target.value)} className="bg-white border-slate-200" />
-          <Button data-testid="confirm-resolve-button" onClick={resolve} className="bg-emerald-600 hover:bg-emerald-700">Konfirmasi</Button>
+          <Textarea data-testid="resolution-textarea" placeholder={t("resolve_action")} value={note} onChange={(e) => setNote(e.target.value)} className="bg-white border-slate-200" />
+          <Button data-testid="confirm-resolve-button" onClick={resolve} className="bg-emerald-600 hover:bg-emerald-700 text-white">{t("confirm")}</Button>
         </DialogContent>
       </Dialog>
     </div>

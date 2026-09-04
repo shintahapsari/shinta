@@ -37,6 +37,40 @@ logger = logging.getLogger(__name__)
 
 ROLES = ["farmer", "collector", "manufacturer", "distributor", "retailer", "admin"]
 
+CITY_COORDS = {
+    "jakarta": (-6.2088, 106.8456),
+    "surabaya": (-7.2575, 112.7521),
+    "bandung": (-6.9175, 107.6191),
+    "semarang": (-6.9667, 110.4167),
+    "yogyakarta": (-7.7956, 110.3695),
+    "medan": (3.5952, 98.6722),
+    "makassar": (-5.1477, 119.4327),
+    "denpasar": (-8.6705, 115.2126),
+    "temanggung": (-7.3167, 110.1833),
+    "jember": (-8.1729, 113.7003),
+    "kediri": (-7.8167, 112.0167),
+    "malang": (-7.9797, 112.6304),
+    "solo": (-7.5755, 110.8243),
+    "madura": (-7.0000, 113.5000),
+    "lombok": (-8.6500, 116.3242),
+}
+
+def match_city_coords(text: str):
+    if not text: return None
+    low = text.lower()
+    for city, coords in CITY_COORDS.items():
+        if city in low:
+            return {"lat": coords[0], "lng": coords[1], "city": city.title()}
+    return None
+
+def parse_gps(gps: str):
+    if not gps: return None
+    try:
+        parts = gps.split(",")
+        return {"lat": float(parts[0].strip()), "lng": float(parts[1].strip())}
+    except Exception:
+        return None
+
 # ============ Auth Helpers ============
 def hash_password(pw: str) -> str:
     return bcrypt.hashpw(pw.encode(), bcrypt.gensalt()).decode()
@@ -456,6 +490,23 @@ async def public_verify(product_id: str):
 
     hb = next((c for c in chain if c["prefix"] == "HB"), None)
     pb = next((c for c in chain if c["prefix"] == "PB"), None)
+    sb = next((c for c in chain if c["prefix"] == "SB"), None)
+    rb = retail
+
+    harvest_coords = parse_gps(hb.get("gps")) if hb else None
+    if not harvest_coords and hb:
+        harvest_coords = match_city_coords(hb.get("location"))
+    retail_coords = match_city_coords(rb.get("store_location")) or match_city_coords(sb.get("destination") if sb else "")
+
+    # Increment scan counter
+    await db.verify_counts.update_one(
+        {"product_id": product_id},
+        {"$inc": {"count": 1}, "$set": {"last_scan": datetime.now(timezone.utc).isoformat()}},
+        upsert=True,
+    )
+    counter = await db.verify_counts.find_one({"product_id": product_id})
+    scan_count = counter["count"] if counter else 1
+
     # Public info only — hide commercial details
     return {
         "authentic": True,
@@ -467,6 +518,9 @@ async def public_verify(product_id: str):
         "retail_date": retail.get("display_date"),
         "blockchain_verified": True,
         "block_count": len(chain),
+        "scan_count": scan_count,
+        "harvest_coords": harvest_coords,
+        "retail_coords": retail_coords,
         "journey": [
             {"stage": c["prefix"], "batch_id": c["batch_id"], "date": c["created_at"]}
             for c in chain

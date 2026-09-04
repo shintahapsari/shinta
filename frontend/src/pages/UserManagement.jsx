@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
+import { useLang } from "@/contexts/LangContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +14,7 @@ import { Users, UserPlus, Trash2 } from "lucide-react";
 const ROLES = ["farmer", "collector", "manufacturer", "distributor", "retailer"];
 
 export default function UserManagement() {
+  const { t } = useLang();
   const [users, setUsers] = useState([]);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ email: "", password: "", name: "", role: "farmer", company: "", position: "", contact: "" });
@@ -23,15 +25,24 @@ export default function UserManagement() {
 
   const invite = async (e) => {
     e.preventDefault();
+    const missing = [];
+    if (!form.name) missing.push(t("name"));
+    if (!form.email) missing.push(t("email"));
+    if (!form.password) missing.push(t("initial_password"));
+    if (!form.role) missing.push(t("role"));
+    if (!form.company) missing.push(t("company"));
+    if (!form.position) missing.push(t("position"));
+    if (!form.contact) missing.push(t("contact"));
+    if (missing.length) { toast.error(`${t("required_fields")}: ${missing.join(", ")}`); return; }
     try {
       await api.post("/users/invite", form);
-      toast.success("Undangan terkirim & akun dibuat");
+      toast.success(t("invite_success"));
       setOpen(false); setForm({ email: "", password: "", name: "", role: "farmer", company: "", position: "", contact: "" }); load();
-    } catch (err) { toast.error(err.response?.data?.detail || "Gagal"); }
+    } catch (err) { toast.error(err.response?.data?.detail || t("save_fail")); }
   };
 
   const del = async (id) => {
-    if (!confirm("Hapus user ini?")) return;
+    if (!confirm(t("delete_confirm"))) return;
     await api.delete(`/users/${id}`); load();
   };
 
@@ -41,30 +52,30 @@ export default function UserManagement() {
     <div className="space-y-6">
       <div className="flex items-end justify-between">
         <div>
-          <div className="text-xs font-mono uppercase tracking-widest text-emerald-700 mb-2">Admin Only</div>
-          <h1 className="text-3xl font-bold flex items-center gap-3"><Users className="w-8 h-8"/>Manajemen Pengguna</h1>
+          <div className="text-xs font-mono uppercase tracking-widest text-emerald-700 mb-2">{t("admin_only")}</div>
+          <h1 className="text-3xl font-bold flex items-center gap-3 text-slate-900"><Users className="w-8 h-8"/>{t("users_title")}</h1>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button data-testid="invite-user-button" className="bg-emerald-600 hover:bg-emerald-700"><UserPlus className="w-4 h-4 mr-2"/>Undang Pengguna</Button>
+            <Button data-testid="invite-user-button" className="bg-emerald-600 hover:bg-emerald-700 text-white"><UserPlus className="w-4 h-4 mr-2"/>{t("invite_user")}</Button>
           </DialogTrigger>
           <DialogContent className="glass-card border-slate-200 max-w-xl">
-            <DialogHeader><DialogTitle>Undang Pengguna Baru</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{t("invite_new")}</DialogTitle></DialogHeader>
             <form onSubmit={invite} className="grid grid-cols-2 gap-3">
-              <div><Label>Nama</Label><Input data-testid="invite-name-input" value={form.name} onChange={(e) => set("name", e.target.value)} required className="bg-white border-slate-200 mt-1" /></div>
-              <div><Label>Email</Label><Input data-testid="invite-email-input" type="email" value={form.email} onChange={(e) => set("email", e.target.value)} required className="bg-white border-slate-200 mt-1" /></div>
-              <div><Label>Password Awal</Label><Input data-testid="invite-password-input" value={form.password} onChange={(e) => set("password", e.target.value)} required className="bg-white border-slate-200 mt-1" /></div>
+              <div><Label>{t("name")}</Label><Input data-testid="invite-name-input" value={form.name} onChange={(e) => set("name", e.target.value)} required className="bg-white border-slate-200 mt-1" /></div>
+              <div><Label>{t("email")}</Label><Input data-testid="invite-email-input" type="email" value={form.email} onChange={(e) => set("email", e.target.value)} required className="bg-white border-slate-200 mt-1" /></div>
+              <div><Label>{t("initial_password")}</Label><Input data-testid="invite-password-input" value={form.password} onChange={(e) => set("password", e.target.value)} required className="bg-white border-slate-200 mt-1" /></div>
               <div>
-                <Label>Role</Label>
+                <Label>{t("role")}</Label>
                 <Select value={form.role} onValueChange={(v) => set("role", v)}>
                   <SelectTrigger data-testid="invite-role-select" className="bg-white border-slate-200 mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>{ROLES.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div><Label>Perusahaan</Label><Input data-testid="invite-company-input" value={form.company} onChange={(e) => set("company", e.target.value)} className="bg-white border-slate-200 mt-1" /></div>
-              <div><Label>Jabatan</Label><Input data-testid="invite-position-input" value={form.position} onChange={(e) => set("position", e.target.value)} className="bg-white border-slate-200 mt-1" /></div>
-              <div className="col-span-2"><Label>Kontak</Label><Input data-testid="invite-contact-input" value={form.contact} onChange={(e) => set("contact", e.target.value)} className="bg-white border-slate-200 mt-1" /></div>
-              <Button data-testid="invite-submit-button" type="submit" className="col-span-2 bg-emerald-600 hover:bg-emerald-700">Buat Akun</Button>
+              <div><Label>{t("company")}</Label><Input data-testid="invite-company-input" value={form.company} onChange={(e) => set("company", e.target.value)} className="bg-white border-slate-200 mt-1" /></div>
+              <div><Label>{t("position")}</Label><Input data-testid="invite-position-input" value={form.position} onChange={(e) => set("position", e.target.value)} className="bg-white border-slate-200 mt-1" /></div>
+              <div className="col-span-2"><Label>{t("contact")}</Label><Input data-testid="invite-contact-input" value={form.contact} onChange={(e) => set("contact", e.target.value)} className="bg-white border-slate-200 mt-1" /></div>
+              <Button data-testid="invite-submit-button" type="submit" className="col-span-2 bg-emerald-600 hover:bg-emerald-700 text-white">{t("create_account")}</Button>
             </form>
           </DialogContent>
         </Dialog>
@@ -73,7 +84,7 @@ export default function UserManagement() {
       <Card className="glass-card border-slate-200"><CardContent className="p-0">
         <table className="w-full text-sm">
           <thead className="border-b border-slate-200 text-xs uppercase tracking-widest text-slate-500 font-mono">
-            <tr><th className="text-left p-4">Nama</th><th className="text-left p-4">Email</th><th className="text-left p-4">Role</th><th className="text-left p-4">Perusahaan</th><th className="text-left p-4">Jabatan</th><th className="p-4"></th></tr>
+            <tr><th className="text-left p-4">{t("name")}</th><th className="text-left p-4">{t("email")}</th><th className="text-left p-4">{t("role")}</th><th className="text-left p-4">{t("company")}</th><th className="text-left p-4">{t("position")}</th><th className="p-4"></th></tr>
           </thead>
           <tbody>
             {users.map((u) => (

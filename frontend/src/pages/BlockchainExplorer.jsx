@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
+import { useLang } from "@/contexts/LangContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Blocks, ShieldCheck } from "lucide-react";
 
 export default function BlockchainExplorer() {
+  const { t } = useLang();
   const [blocks, setBlocks] = useState([]);
   const [stats, setStats] = useState(null);
   const [selected, setSelected] = useState(null);
@@ -21,8 +23,8 @@ export default function BlockchainExplorer() {
   const verify = async () => {
     const { data } = await api.get("/ledger/verify");
     setIntegrity(data);
-    if (data.valid) toast.success(`Chain valid · ${data.total_blocks} blok terverifikasi`);
-    else toast.error(`Chain rusak pada block #${data.broken_at}`);
+    if (data.valid) toast.success(`${t("chain_valid_msg")} · ${data.total_blocks} ${t("blocks_verified")}`);
+    else toast.error(`${t("chain_broken_at")} #${data.broken_at}`);
   };
 
   return (
@@ -30,9 +32,9 @@ export default function BlockchainExplorer() {
       <div className="flex items-end justify-between">
         <div>
           <div className="text-xs font-mono uppercase tracking-widest text-emerald-700 mb-2">Ledger Immutable</div>
-          <h1 className="text-3xl font-bold flex items-center gap-3"><Blocks className="w-8 h-8"/>Blockchain Explorer</h1>
+          <h1 className="text-3xl font-bold flex items-center gap-3 text-slate-900"><Blocks className="w-8 h-8"/>{t("explorer_title")}</h1>
         </div>
-        <Button data-testid="verify-chain-button" onClick={verify} className="bg-emerald-600 hover:bg-emerald-700"><ShieldCheck className="w-4 h-4 mr-2"/>Verifikasi Integrity</Button>
+        <Button data-testid="verify-chain-button" onClick={verify} className="bg-emerald-600 hover:bg-emerald-700 text-white"><ShieldCheck className="w-4 h-4 mr-2"/>{t("verify_integrity")}</Button>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

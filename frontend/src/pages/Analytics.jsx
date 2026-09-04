@@ -3,6 +3,7 @@ import { api } from "@/lib/api";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { toast } from "sonner";
+import { useLang } from "@/contexts/LangContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, LineChart, Line, Legend } from "recharts";
@@ -11,6 +12,7 @@ import { BarChart3, Download, FileText } from "lucide-react";
 const COLORS = ["#4ADE80", "#06B6D4", "#F59E0B", "#8B5CF6", "#EC4899"];
 
 export default function Analytics() {
+  const { t } = useLang();
   const [data, setData] = useState(null);
   useEffect(() => { api.get("/stats/analytics").then(({ data }) => setData(data)); }, []);
 
@@ -26,7 +28,7 @@ export default function Analytics() {
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = "analytics.csv"; link.click();
-    toast.success("CSV diunduh");
+    toast.success(t("csv_downloaded"));
   };
 
   const exportPdf = () => {

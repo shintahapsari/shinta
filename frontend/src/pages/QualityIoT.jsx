@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { useLang } from "@/contexts/LangContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Activity, Thermometer, Droplets, Leaf, Sparkles } from "lucide-react";
 
 export default function QualityIoT() {
+  const { t } = useLang();
   const [data, setData] = useState(null);
 
   useEffect(() => {
@@ -15,14 +17,14 @@ export default function QualityIoT() {
     return () => clearInterval(t);
   }, []);
 
-  if (!data) return <div className="text-slate-600">Menghubungkan sensor IoT...</div>;
+  if (!data) return <div className="text-slate-600">{t("connecting_sensor")}</div>;
   const c = data.current;
 
   const cards = [
-    { label: "Suhu Storage", value: `${c.temperature_c}°C`, icon: Thermometer, status: c.temperature_c > 30 ? "exception" : "verified", color: "cyan" },
-    { label: "Kelembaban", value: `${c.humidity_pct}%`, icon: Droplets, status: c.humidity_pct > 75 ? "exception" : "verified", color: "blue" },
-    { label: "Kadar Air Daun", value: `${c.moisture_pct}%`, icon: Leaf, status: "verified", color: "emerald" },
-    { label: "Leaf Grade", value: c.leaf_grade, icon: Sparkles, status: "verified", color: "amber" },
+    { label: t("temp_storage"), value: `${c.temperature_c}°C`, icon: Thermometer, status: c.temperature_c > 30 ? "exception" : "verified", color: "cyan" },
+    { label: t("humidity"), value: `${c.humidity_pct}%`, icon: Droplets, status: c.humidity_pct > 75 ? "exception" : "verified", color: "blue" },
+    { label: t("leaf_moisture"), value: `${c.moisture_pct}%`, icon: Leaf, status: "verified", color: "emerald" },
+    { label: t("leaf_grade"), value: c.leaf_grade, icon: Sparkles, status: "verified", color: "amber" },
   ];
 
   const sty = { verified: "border-emerald-300 bg-emerald-50 text-emerald-700", exception: "border-rose-300 bg-rose-50 text-rose-700" };
@@ -32,9 +34,9 @@ export default function QualityIoT() {
       <div className="flex items-end justify-between flex-wrap gap-4">
         <div>
           <div className="text-xs font-mono uppercase tracking-widest text-emerald-700 mb-2">Proposed Integration (Mocked)</div>
-          <h1 className="text-3xl font-bold flex items-center gap-3"><Activity className="w-8 h-8"/>IoT & AI Quality Inspection</h1>
+          <h1 className="text-3xl font-bold flex items-center gap-3 text-slate-900"><Activity className="w-8 h-8"/>{t("quality_title")}</h1>
         </div>
-        <Badge className="bg-amber-100 border border-amber-300 text-amber-700">PROPOSED INTEGRATION · SIMULATED SENSOR STREAM</Badge>
+        <Badge className="bg-amber-100 border border-amber-300 text-amber-700">{t("proposed_integration")}</Badge>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -46,7 +48,7 @@ export default function QualityIoT() {
                 <Icon className={`w-5 h-5 mb-3`} />
                 <div className="text-xs uppercase tracking-widest opacity-80 font-mono">{k.label}</div>
                 <div className="text-2xl font-bold mt-1">{k.value}</div>
-                <div className="text-[10px] uppercase tracking-wider mt-2">{k.status === "verified" ? "✓ Normal" : "⚠ Anomali"}</div>
+                <div className="text-[10px] uppercase tracking-wider mt-2">{k.status === "verified" ? t("normal") : t("anomaly")}</div>
               </CardContent>
             </Card>
           );

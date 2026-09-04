@@ -4,14 +4,57 @@ import axios from "axios";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
 import { Html5Qrcode } from "html5-qrcode";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import { useLang } from "@/contexts/LangContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ShieldCheck, Camera, Search, Leaf, Blocks, MapPin, Calendar, Download, Languages } from "lucide-react";
+import { ShieldCheck, Camera, Search, Leaf, Blocks, MapPin, Calendar, Download, Languages, Eye } from "lucide-react";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+
+// Fix leaflet default marker icon paths
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+});
+
+function greenIcon() {
+  return L.divIcon({
+    className: "custom-pin",
+    html: `<div style="background:#2D8B55;width:30px;height:30px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);"><div style="transform:rotate(45deg);color:white;font-size:14px;text-align:center;line-height:24px;">🌱</div></div>`,
+    iconSize: [30, 30], iconAnchor: [15, 30],
+  });
+}
+function redIcon() {
+  return L.divIcon({
+    className: "custom-pin",
+    html: `<div style="background:#DC2626;width:30px;height:30px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);"><div style="transform:rotate(45deg);color:white;font-size:14px;text-align:center;line-height:24px;">🏪</div></div>`,
+    iconSize: [30, 30], iconAnchor: [15, 30],
+  });
+}
+
+function ProvenanceMap({ from, to, lang }) {
+  const mapRef = useRef(null);
+  const mapInst = useRef(null);
+  useEffect(() => {
+    if (!from || !to || !mapRef.current) return;
+    if (mapInst.current) { mapInst.current.remove(); mapInst.current = null; }
+    const bounds = L.latLngBounds([[from.lat, from.lng], [to.lat, to.lng]]);
+    const map = L.map(mapRef.current, { zoomControl: true, scrollWheelZoom: false }).fitBounds(bounds, { padding: [30, 30] });
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap", maxZoom: 18 }).addTo(map);
+    L.marker([from.lat, from.lng], { icon: greenIcon() }).addTo(map).bindPopup(`<b>${lang === "id" ? "Kebun Asal" : "Origin Farm"}</b><br/>${from.city || ""}`);
+    L.marker([to.lat, to.lng], { icon: redIcon() }).addTo(map).bindPopup(`<b>${lang === "id" ? "Toko Ritel" : "Retail Store"}</b><br/>${to.city || ""}`);
+    L.polyline([[from.lat, from.lng], [to.lat, to.lng]], { color: "#2D8B55", weight: 3, dashArray: "8,10", opacity: 0.8 }).addTo(map);
+    mapInst.current = map;
+    return () => { map.remove(); mapInst.current = null; };
+  }, [from, to, lang]);
+  return <div ref={mapRef} className="w-full h-64 rounded-lg overflow-hidden border border-slate-200" data-testid="provenance-map" />;
+}
 
 export default function ConsumerPortal() {
   const { productId: paramId } = useParams();
@@ -28,7 +71,7 @@ export default function ConsumerPortal() {
       setResult(data);
       nav(`/verify/${id}`, { replace: true });
     } catch (err) {
-      setResult({ authentic: false, error: err.response?.data?.detail || (lang === "id" ? "Produk tidak ditemukan" : "Product not found") });
+      setResult({ authentic: false, error: err.response?.data?.detail || t("product_not_found") });
     }
   };
 
@@ -47,7 +90,7 @@ export default function ConsumerPortal() {
           scanner.stop().then(() => setScanning(false));
           verify(id);
         }, () => {});
-      } catch (e) { toast.error(lang === "id" ? "Kamera tidak tersedia" : "Camera unavailable"); setScanning(false); }
+      } catch (e) { toast.error(t("camera_unavailable")); setScanning(false); }
     }, 100);
   };
   const stopScan = async () => { try { await scannerRef.current?.stop(); } catch {} setScanning(false); };
@@ -55,13 +98,21 @@ export default function ConsumerPortal() {
   const downloadPdf = () => {
     const doc = new jsPDF();
     doc.setFillColor(45, 139, 85); doc.rect(0, 0, 220, 40, "F");
-    doc.setTextColor(255, 255, 255); doc.setFontSize(20); doc.text(t("authentic").replace("✓ ", "✓ "), 20, 25);
+    doc.setTextColor(255, 255, 255); doc.setFontSize(20); doc.text(t("authentic"), 20, 25);
     doc.setTextColor(30, 30, 30); doc.setFontSize(11);
     let y = 55;
-    const labels = lang === "id"
-      ? [["Product ID", result.product_id], ["Varietas", result.variety], ["Asal Kebun", result.cultivation_area], ["Tanggal Panen", result.harvest_date], ["Grade Kualitas", result.quality_grade], ["Tanggal Ritel", result.retail_date], ["Blockchain", result.blockchain_verified ? "TERVERIFIKASI" : "-"], ["Total Blocks", String(result.block_count)]]
-      : [["Product ID", result.product_id], ["Variety", result.variety], ["Cultivation Area", result.cultivation_area], ["Harvest Date", result.harvest_date], ["Quality Grade", result.quality_grade], ["Retail Date", result.retail_date], ["Blockchain", result.blockchain_verified ? "VERIFIED" : "-"], ["Total Blocks", String(result.block_count)]];
-    labels.forEach(([k, v]) => { doc.setFont(undefined, "bold"); doc.text(`${k}:`, 20, y); doc.setFont(undefined, "normal"); doc.text(String(v || "-"), 70, y); y += 8; });
+    const labels = [
+      ["Product ID", result.product_id],
+      [t("variety"), result.variety],
+      [t("cultivation"), result.cultivation_area],
+      [t("harvest_date"), result.harvest_date],
+      [t("grade"), result.quality_grade],
+      ["Retail Date", result.retail_date],
+      ["Blockchain", result.blockchain_verified ? "VERIFIED" : "-"],
+      ["Total Blocks", String(result.block_count)],
+      [t("scanned_count"), `${result.scan_count} ${t("times")}`],
+    ];
+    labels.forEach(([k, v]) => { doc.setFont(undefined, "bold"); doc.text(`${k}:`, 20, y); doc.setFont(undefined, "normal"); doc.text(String(v || "-"), 80, y); y += 8; });
     doc.save(`certificate-${result.product_id}.pdf`);
   };
 
@@ -92,7 +143,7 @@ export default function ConsumerPortal() {
         {scanning && (
           <Card className="glass-card mb-4"><CardContent className="p-5">
             <div id="qr-reader" className="rounded-lg overflow-hidden" />
-            <Button onClick={stopScan} variant="outline" className="w-full mt-3">Cancel</Button>
+            <Button onClick={stopScan} variant="outline" className="w-full mt-3">{t("cancel")}</Button>
           </CardContent></Card>
         )}
 
@@ -113,8 +164,22 @@ export default function ConsumerPortal() {
                 <div className="text-3xl font-bold text-emerald-700">{t("authentic")}</div>
                 <div className="text-sm text-emerald-600 mt-1 font-mono uppercase tracking-widest">{t("authentic_sub")}</div>
                 <div className="mt-4 font-mono text-lg text-slate-900">{result.product_id}</div>
+                <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 border border-emerald-200 text-xs text-emerald-800 font-mono" data-testid="scan-counter">
+                  <Eye className="w-3 h-3"/> {t("scanned_count")} {result.scan_count} {t("times")}
+                </div>
               </CardContent>
             </Card>
+
+            {result.harvest_coords && result.retail_coords && (
+              <Card className="glass-card"><CardContent className="p-5">
+                <div className="text-[10px] uppercase tracking-widest text-emerald-700 font-mono mb-3 flex items-center gap-2"><MapPin className="w-3.5 h-3.5"/>{t("map_title")}</div>
+                <ProvenanceMap from={result.harvest_coords} to={result.retail_coords} lang={lang} />
+                <div className="grid grid-cols-2 gap-3 mt-3 text-xs">
+                  <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-emerald-600"/> <span className="text-slate-700"><strong>{t("map_from")}</strong>: {result.cultivation_area}</span></div>
+                  <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-rose-600"/> <span className="text-slate-700"><strong>{t("map_to")}</strong>: {result.retail_coords.city}</span></div>
+                </div>
+              </CardContent></Card>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               <Card className="glass-card"><CardContent className="p-4">
