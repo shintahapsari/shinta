@@ -1,0 +1,42 @@
+{
+  "summary": "Comprehensive backend (37 pytest) + frontend Playwright smoke test of SIMETRI-TIP UNEJ. 36/37 backend tests pass. Auth (staff login, wrong-password, magic-link request+verify, RBAC for admin/tim_manajemen/mahasiswa) all pass. Dashboard KPI, Partners CRUD, Documents versioning (v1->v2 supersedes), Implementations w/ approval flow (approved count increments), Kampus Berdampak, Audit, Notifications, and all 5 Report types (preview + PDF + Excel exports return correct content-type) work. Frontend loads, admin logs in successfully, all nav links (Dashboard, Master Mitra, Repository Dokumen, Implementasi, Kampus Berdampak, Laporan & Ekspor, Audit Trail, Manajemen Pengguna) reachable, KPI cards & charts render, notification bell shows list with mark-all. 8 seeded partners visible. Report tabs = 5 with PDF & Excel buttons present.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/partners/check-duplicate", "issue": "Diacritic-insensitive matching fails: 'PT Nestle Indonesia' NOT detected as duplicate of seeded 'PT Nestlé Indonesia'. The `norm()` helper strips 'é' via `[^a-z0-9]` so the two normalized strings differ ('ptnestlindonesia' vs 'ptnestleindonesia') and neither is a substring of the other. Requirements explicitly require this exact case to trigger the duplicate alert.", "priority": "HIGH"}
+    ],
+    "minor": [
+      {"endpoint": "GET /api/kampus-berdampak", "issue": "Endpoint has no role restriction — mahasiswa can call it (200). Spec says mahasiswa should be redirected/denied. Frontend guards the route but API is open."},
+      {"endpoint": "GET /api/partners?q=Nestl", "issue": "Verify frontend integration: UI list rendered 0 rows when searching 'Nestl' though the seeded 'Nestlé' should match. May be same diacritic issue in filter path or frontend client-side filter."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Partner search UI", "issue": "Typing 'Nestl' produces 0 results despite seeded 'PT Nestlé Indonesia'. Likely diacritic normalization missing.", "affected_selectors": ["partner-search"]}
+    ],
+    "design_issues": [
+      {"screen": "Notification drawer", "issues": ["Radix DialogContent missing Description/aria-describedby (a11y warning in console)"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/backend_test.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Fix duplicate detection: add unicodedata.normalize('NFKD') + strip combining marks in norm() before stripping non-alphanumerics, so 'Nestlé' -> 'nestle'. Also apply to partner list search regex/filter.",
+    "Consider adding role guard to /api/kampus-berdampak (exclude mahasiswa) to align with frontend redirect.",
+    "Add aria-describedby (or DialogDescription) to notification Sheet/Dialog to remove Radix a11y warning."
+  ],
+  "critical_code_review_comments": [
+    "server.py is 842 lines — consider splitting into routers (auth, partners, documents, implementations, reports, files) for maintainability.",
+    "GET /api/kampus-berdampak lacks role check — inconsistent with frontend guard.",
+    "Duplicate-detection norm() does not strip diacritics; violates requirement.",
+    "Cookies set with samesite='none'; secure=True — correct for cross-site preview but ensure JWT_SECRET is set via env (it is, but no default guard beyond KeyError which is fine).",
+    "No brute-force lockout on /api/auth/login (spec/playbook expects lockout after 5 fails)."
+  ],
+  "updated_files": ["/app/backend/tests/backend_test.py"],
+  "success_rate": {"backend": "97% (36/37)", "frontend": "100% smoke-tested flows"},
+  "test_credentials": "Admin: shintasyafrina9801@gmail.com / AdminUNEJ2026! ; kerma1@unej.ac.id / Staff2026! ; mbkm@unej.ac.id / Staff2026! ; manajemen@unej.ac.id / Staff2026!",
+  "seed_data_creation": "Tests create TEST_-prefixed partners/documents/implementations; partner rows self-cleanup via DELETE, others left (small volume).",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend test suite at /app/backend/tests/backend_test.py runs in ~6s with xdist. Only failing case is TestPartners::test_duplicate_detection. After main agent fixes diacritic normalization in server.py norm() (and possibly partner list search), rerun that test plus test_search assertion — consider strengthening test_search to assert count>=1.",
+  "rca of the issue": "Root cause of duplicate-detection miss: `norm(s) = re.sub(r'[^a-z0-9]', '', s.lower())` removes the character 'é' entirely since it is not in [a-z0-9], producing 'ptnestlindonesia' from 'PT Nestlé Indonesia'. Input 'PT Nestle Indonesia' produces 'ptnestleindonesia'. Substring check fails because of the extra 'e'. Fix: import unicodedata; s2 = unicodedata.normalize('NFKD', s).encode('ascii','ignore').decode('ascii'); then apply lowercase + alnum-strip. This maps 'é' -> 'e' before stripping, so both inputs normalize to 'ptnestleindonesia' → 100% match. Also apply to the /api/partners search regex path or add a normalized_name field to partners to enable diacritic-insensitive substring search."
+}
