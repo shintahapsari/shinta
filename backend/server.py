@@ -11,7 +11,7 @@ import logging
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional
 
-from fastapi import FastAPI, APIRouter, Request, Response, HTTPException, Depends, UploadFile, File, Query, Header
+from fastapi import FastAPI, APIRouter, Request, Response, HTTPException, Depends, UploadFile, File, Query, Header, BackgroundTasks
 from starlette.responses import Response as StarletteResponse
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -47,6 +47,18 @@ def now_iso() -> str:
 
 def new_id() -> str:
     return str(uuid.uuid4())
+
+
+def derive_counts(doc: dict) -> dict:
+    dl = [x.strip() for x in (doc.get("dosen_list") or []) if x and x.strip()]
+    ml = [x.strip() for x in (doc.get("mahasiswa_list") or []) if x and x.strip()]
+    doc["dosen_list"] = dl
+    doc["mahasiswa_list"] = ml
+    if dl:
+        doc["jumlah_dosen"] = len(dl)
+    if ml:
+        doc["jumlah_mahasiswa"] = len(ml)
+    return doc
 
 
 # ---------------- Models ----------------
@@ -113,6 +125,8 @@ class ImplementationIn(BaseModel):
     region: Optional[str] = ""
     jumlah_dosen: int = 0
     jumlah_mahasiswa: int = 0
+    dosen_list: Optional[List[str]] = []
+    mahasiswa_list: Optional[List[str]] = []
     catatan: Optional[str] = ""
 
 
@@ -512,6 +526,7 @@ async def create_implementation(body: ImplementationIn, request: Request, user=D
     if user["role"] == "tim_manajemen":
         raise HTTPException(status_code=403, detail="Tim Manajemen bersifat read-only")
     doc = body.model_dump()
+    doc = derive_counts(doc)
     doc.update({
         "id": new_id(), "status_approval": "Pending", "catatan_approval": "",
         "created_by": user["id"], "created_by_name": user["name"], "created_at": now_iso(),
@@ -542,7 +557,9 @@ async def update_implementation(iid: str, body: ImplementationIn, request: Reque
         raise HTTPException(status_code=403, detail="Akses ditolak")
     if user["role"] == "tim_manajemen":
         raise HTTPException(status_code=403, detail="Read-only")
-    await db.implementations.update_one({"id": iid}, {"$set": body.model_dump()})
+    if i.get("kampus_berdampak") and user["role"] not in ("admin", "tim_kerjasama", "tim_mbkm"):
+        raise HTTPException(status_code=403, detail="Status kegiatan Kampus Berdampak hanya dapat diedit oleh Tim Kerja Sama dan Tim Kampus Berdampak/MBKM")
+    await db.implementations.update_one({"id": iid}, {"$set": derive_counts(body.model_dump())})
     await audit(user, "UPDATE", "implementation", iid, f"Memperbarui implementasi: {body.judul}", request)
     return await db.implementations.find_one({"id": iid}, {"_id": 0})
 
@@ -825,6 +842,62 @@ async def export_report(rtype: str, request: Request, format: str = "pdf", auth:
     data = EX.to_pdf(title, headers, rows)
     return StarletteResponse(content=data, media_type="application/pdf",
                              headers={"Content-Disposition": f'attachment; filename="{rtype}.pdf"'})
+
+
+# ---------------- Cron: document expiry reminder ----------------
+import hmac
+
+CRON_SECRET = os.environ.get("WEBHOOK_CRON_SECRET", "")
+EXPIRY_REMINDER_DAYS = 90
+
+
+async def _run_expiry_reminder():
+    now = datetime.now(timezone.utc)
+    expiring = []
+    for d in await db.documents.find({"status": "Active", "is_latest": True}, {"_id": 0}).to_list(2000):
+        if not d.get("tanggal_berakhir"):
+            continue
+        try:
+            end = datetime.fromisoformat(str(d["tanggal_berakhir"])[:10]).replace(tzinfo=timezone.utc)
+            days = (end - now).days
+            if 0 <= days <= EXPIRY_REMINDER_DAYS:
+                expiring.append({**d, "days": days})
+        except Exception:
+            pass
+    if not expiring:
+        logger.info("Expiry reminder: no documents nearing expiry")
+        return
+    expiring.sort(key=lambda x: x["days"])
+    pmap = {p["id"]: p["nama"] for p in await db.partners.find({}, {"_id": 0, "id": 1, "nama": 1}).to_list(3000)}
+    rows = [{"judul": d["judul"], "partner": pmap.get(d["partner_id"], "-"),
+             "tanggal_berakhir": d.get("tanggal_berakhir"), "days": d["days"]} for d in expiring]
+    link = f"{FRONTEND_URL}/documents"
+    recipients = await db.users.find(
+        {"role": {"$in": ["admin", "tim_kerjasama"]}, "is_active": True, "email": {"$nin": [None, ""]}},
+        {"_id": 0, "email": 1, "name": 1}).to_list(200)
+    for r in recipients:
+        try:
+            await ES.send_email(
+                to=r["email"],
+                subject=f"Pengingat: {len(rows)} dokumen kerja sama mendekati masa berakhir",
+                html=ES.expiry_reminder_html(r.get("name", "Tim Kerja Sama"), rows, link),
+            )
+        except Exception as e:
+            logger.error(f"Expiry reminder email failed for {r['email']}: {e}")
+    await notify(["admin", "tim_kerjasama", "tim_mbkm"], "Pengingat Dokumen Kedaluwarsa",
+                 f"{len(rows)} dokumen kerja sama mendekati masa berakhir. Segera perbarui.", "warning")
+    logger.info(f"Expiry reminder sent to {len(recipients)} staff for {len(rows)} documents")
+
+
+@api.post("/cron/expiry-reminder")
+async def cron_expiry_reminder(request: Request, background_tasks: BackgroundTasks):
+    # Cron endpoints must ack 2xx immediately; enqueue/background the actual work.
+    auth = request.headers.get("Authorization", "")
+    token = auth[7:] if auth.startswith("Bearer ") else ""
+    if not CRON_SECRET or not hmac.compare_digest(token, CRON_SECRET):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    background_tasks.add_task(_run_expiry_reminder)
+    return {"status": "accepted"}
 
 
 @api.get("/")

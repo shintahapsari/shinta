@@ -15,7 +15,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 
-const KEGIATAN = ["Belum Dimulai", "On Process", "Selesai", "Tertunda"];
+const KEGIATAN = ["Belum Dimulai", "Dalam Proses", "Selesai", "Tertunda"];
 const TRIWULAN = ["Q1", "Q2", "Q3", "Q4"];
 
 export default function ImplementationsPage() {
@@ -48,7 +48,7 @@ export default function ImplementationsPage() {
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ partner_id: "", document_id: null, tahun: new Date().getFullYear(), triwulan: "Q1", jenis_kegiatan: "", judul: "", scope_mbkm: false, kampus_berdampak: false, status_kegiatan: "On Process", link_output: "", region: "", jumlah_dosen: 0, jumlah_mahasiswa: 0, catatan: "" });
+    setForm({ partner_id: "", document_id: null, tahun: new Date().getFullYear(), triwulan: "Q1", jenis_kegiatan: "", judul: "", scope_mbkm: false, kampus_berdampak: false, status_kegiatan: "Dalam Proses", link_output: "", region: "", jumlah_dosen: 0, jumlah_mahasiswa: 0, dosen_list: [], mahasiswa_list: [], catatan: "" });
     setOpen(true);
   };
   const openEdit = (i) => {
@@ -123,6 +123,12 @@ export default function ImplementationsPage() {
                 </div>
                 <p className="text-sm text-slate-500 mt-0.5">{i.partner_nama} · {i.jenis_kegiatan}</p>
                 <p className="text-xs text-slate-400 mt-1">{i.tahun} {i.triwulan} · {i.region || "—"} · {i.jumlah_dosen} dosen, {i.jumlah_mahasiswa} mahasiswa</p>
+                {(i.dosen_list?.length > 0 || i.mahasiswa_list?.length > 0) && (
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    {i.dosen_list?.length > 0 && <span>Dosen: {i.dosen_list.join(", ")}. </span>}
+                    {i.mahasiswa_list?.length > 0 && <span>Mahasiswa: {i.mahasiswa_list.join(", ")}.</span>}
+                  </p>
+                )}
                 {i.catatan_approval && <p className="text-xs text-amber-700 mt-1.5 bg-amber-50 px-2 py-1 rounded">Catatan: {i.catatan_approval}</p>}
               </div>
               <div className="flex flex-col items-end gap-2">
@@ -136,7 +142,7 @@ export default function ImplementationsPage() {
                       <ExternalLink className="w-3 h-3" /> Bukti
                     </a>
                   )}
-                  {canCreate && (
+                  {canCreate && !(user.role === "mahasiswa" && i.kampus_berdampak) && (
                     <Button size="sm" variant="ghost" data-testid={`impl-edit-${idx}`} onClick={() => openEdit(i)} className="text-[#0B2545]">
                       <Pencil className="w-4 h-4" />
                     </Button>
@@ -184,8 +190,8 @@ export default function ImplementationsPage() {
                   <SelectContent>{KEGIATAN.map((k) => <SelectItem key={k} value={k}>{k}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div><Label>Jumlah Dosen</Label><Input type="number" value={form.jumlah_dosen} className="mt-1.5" onChange={(e) => setForm({ ...form, jumlah_dosen: e.target.value })} /></div>
-              <div><Label>Jumlah Mahasiswa</Label><Input type="number" value={form.jumlah_mahasiswa} className="mt-1.5" onChange={(e) => setForm({ ...form, jumlah_mahasiswa: e.target.value })} /></div>
+              <div className="sm:col-span-2"><Label>Nama Dosen Terlibat</Label><Textarea data-testid="impl-dosen-input" value={(form.dosen_list || []).join("\n")} className="mt-1.5" rows={3} onChange={(e) => setForm({ ...form, dosen_list: e.target.value.split("\n") })} placeholder="Satu nama per baris" /><p className="text-[11px] text-slate-400 mt-1">Jumlah dosen dihitung otomatis dari daftar nama.</p></div>
+              <div className="sm:col-span-2"><Label>Nama Mahasiswa Terlibat</Label><Textarea data-testid="impl-mahasiswa-input" value={(form.mahasiswa_list || []).join("\n")} className="mt-1.5" rows={4} onChange={(e) => setForm({ ...form, mahasiswa_list: e.target.value.split("\n") })} placeholder="Satu nama per baris" /><p className="text-[11px] text-slate-400 mt-1">Jumlah mahasiswa dihitung otomatis dari daftar nama.</p></div>
               <div className="sm:col-span-2"><Label>Link Output / Bukti</Label><Input data-testid="impl-link-input" value={form.link_output} className="mt-1.5" onChange={(e) => setForm({ ...form, link_output: e.target.value })} placeholder="https://…" /></div>
               <div className="sm:col-span-2">
                 <Label>Kategori Kampus Berdampak</Label>

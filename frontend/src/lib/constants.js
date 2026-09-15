@@ -36,6 +36,7 @@ export const STATUS_STYLE = {
   Superseded: "bg-amber-50 text-amber-700 border-amber-200",
   Prospektif: "bg-violet-50 text-violet-700 border-violet-200",
   "On Process": "bg-blue-50 text-blue-700 border-blue-200",
+  "Dalam Proses": "bg-blue-50 text-blue-700 border-blue-200",
   Selesai: "bg-green-50 text-green-700 border-green-200",
   Tertunda: "bg-orange-50 text-orange-700 border-orange-200",
   Pending: "bg-orange-50 text-orange-700 border-orange-200",

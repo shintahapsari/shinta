@@ -1,0 +1,9 @@
+crons:
+  - name: doc-expiry-reminder
+    description: "Emails Tim Kerja Sama weekly about cooperation documents nearing their end date"
+    cron: "0 8 * * 1"
+    timezone: "Asia/Jakarta"
+    endpoint: "{{BASE_URL}}/api/cron/expiry-reminder"
+    method: POST
+    # Cron endpoints must ack 2xx immediately; enqueue/background the actual work.
+    enabled: true

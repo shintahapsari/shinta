@@ -131,7 +131,6 @@ export default function LoginPage() {
                   className="w-full bg-[#0B2545] hover:bg-[#061528] text-white active:scale-95 transition-transform">
                   {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Masuk <ArrowRight className="w-4 h-4 ml-1.5" /></>}
                 </Button>
-                <p className="text-xs text-slate-400 text-center">Demo admin: shintasyafrina9801@gmail.com</p>
               </form>
             </TabsContent>
 

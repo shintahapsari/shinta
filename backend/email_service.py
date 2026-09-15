@@ -134,3 +134,51 @@ def magic_link_html(name: str, link: str) -> str:
         'Dikirim oleh Kemitraan TIP Universitas Jember.</td></tr>'
         '</table></td></tr></table>'
     )
+
+
+
+def expiry_reminder_html(name: str, rows: list, link: str) -> str:
+    safe_name = escape(name or "Tim Kerja Sama")
+    safe_link = escape(link)
+    items = ""
+    for r in rows:
+        judul = escape(str(r.get("judul", "-")))
+        partner = escape(str(r.get("partner", "-")))
+        tgl = escape(str(r.get("tanggal_berakhir", "-")))
+        days = int(r.get("days", 0))
+        items += (
+            '<tr>'
+            f'<td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;font-size:13px;color:#0f172a">{judul}<br>'
+            f'<span style="color:#64748b;font-size:11px">{partner}</span></td>'
+            f'<td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#475569;white-space:nowrap">{tgl}</td>'
+            f'<td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:bold;color:#b45309;white-space:nowrap">{days} hari</td>'
+            '</tr>'
+        )
+    return (
+        '<table role="presentation" width="100%" style="background:#f8fafc;padding:32px 0">'
+        '<tr><td align="center">'
+        '<table role="presentation" width="620" style="background:#ffffff;border-radius:16px;'
+        'overflow:hidden;font-family:Arial,Helvetica,sans-serif">'
+        '<tr><td style="background:#0B2545;padding:24px 32px">'
+        '<span style="color:#FFC72C;font-size:18px;font-weight:bold">Kemitraan TIP</span>'
+        '<span style="color:#ffffff;font-size:13px;display:block;margin-top:4px">'
+        'Program Studi Teknologi Industri Pertanian, Universitas Jember</span></td></tr>'
+        f'<tr><td style="padding:28px 32px">'
+        f'<p style="color:#0f172a;font-size:15px">Halo {safe_name},</p>'
+        '<p style="color:#475569;font-size:13px;line-height:1.6">Beberapa dokumen kerja sama '
+        'mendekati masa berakhir. Mohon segera lakukan pembaruan (revisi) dokumen berikut agar '
+        'status kerja sama tetap aktif:</p>'
+        '<table role="presentation" width="100%" style="border-collapse:collapse;margin:16px 0">'
+        '<tr style="background:#f1f5f9">'
+        '<td style="padding:8px 12px;font-size:11px;color:#475569;text-transform:uppercase">Dokumen</td>'
+        '<td style="padding:8px 12px;font-size:11px;color:#475569;text-transform:uppercase">Berakhir</td>'
+        '<td style="padding:8px 12px;font-size:11px;color:#475569;text-transform:uppercase">Sisa</td>'
+        f'</tr>{items}</table>'
+        f'<p style="text-align:center;margin:24px 0"><a href="{safe_link}" '
+        'style="background:#F5A623;color:#0B2545;text-decoration:none;font-weight:bold;'
+        'padding:12px 28px;border-radius:10px;display:inline-block">Buka Repository Dokumen</a></p>'
+        '</td></tr>'
+        '<tr><td style="background:#f1f5f9;padding:16px 32px;color:#64748b;font-size:12px">'
+        'Dikirim oleh Kemitraan TIP Universitas Jember. Email pengingat otomatis.</td></tr>'
+        '</table></td></tr></table>'
+    )

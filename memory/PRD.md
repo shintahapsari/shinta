@@ -21,9 +21,12 @@ Sistem Terintegrasi Kemitraan Teknologi Industri Pertanian — Program Studi Tek
 - Auth: staff login, student magic-link (dev_magic_link returned for testing), /me, refresh, logout, RBAC per endpoint.
 - Master Partner DB: list/search/filter, create/edit/delete, diacritic-insensitive duplicate detection, Partner 360 (docs/impl/audit tabs).
 - Document Repository: create + immutable revise (versioning, supersede), version history, status Draft/Active/Expired/Superseded, tanggal mulai/berakhir, expiry-soon warning sign (≤90 days) + banner.
-- Implementation module: create/edit, dual status (status_kegiatan vs status_approval), approval flow (Approved/Rejected/Revision), Kampus Berdampak dropdown + MBKM checkbox. Only Approved counts in metrics.
+- Implementation module: create/edit, dual status (status_kegiatan Dalam Proses/Selesai vs status_approval), approval flow (Approved/Rejected/Revision), Kampus Berdampak dropdown + MBKM checkbox. Only Approved counts in metrics. Kampus Berdampak activity status editable only by Tim Kerja Sama & Tim Kampus Berdampak/MBKM (not students).
+- Per-activity dosen & mahasiswa NAMES (auto-counts), not just aggregates.
+- Email reminder: platform cron (.emergent/crons.yml, Mon 08:00 Asia/Jakarta) → POST /api/cron/expiry-reminder (Bearer WEBHOOK_CRON_SECRET) emails Tim Kerja Sama + admin about documents nearing expiry (Resend) + in-app notification.
 - Kampus Berdampak: Eligible (active PKS) vs Implemented (approved kampus_berdampak impl), coverage %, region breakdown, chart.
 - Audit trail immutable; in-app notifications (bell + panel); Dashboard KPI + charts; Reports (5 types) with PDF & Excel export.
+- Demo cooperation/implementation data cleared (one-time, seed version clean-1) so the institution enters real data; only 5 staff accounts seeded. Login page no longer shows the demo admin email hint.
 
 ## Verified
 - Backend 36/37 automated tests + manual curl. Duplicate detection fixed (unicode NFKD). tim_kerjasama edit/delete partners 200; impl edit + kampus_berdampak + approve 200; document expiry flags correct.
