@@ -1,0 +1,185 @@
+{
+  "project_identity": {
+    "full_name": "Sistem Terintegrasi Kemitraan Teknologi Industri Pertanian — Program Studi Teknologi Industri Pertanian, Fakultas Teknologi Pertanian, Universitas Jember",
+    "short_name": "SIMETRI-TIP UNEJ",
+    "tagline": "Single Source of Truth & Governance untuk Kemitraan Industri Agro modern dan Program Kampus Berdampak",
+    "brand_archetype": "Swiss Academic Precision meets Agritech Innovation",
+    "target_roles": [
+      "Mahasiswa (Magic Link Login)",
+      "Admin Kerja Sama (Full CRUD & Governance)",
+      "Tim Kerja Sama (Managing Agreements & Implementation)",
+      "Tim MBKM (Kampus Berdampak & Student Matching)",
+      "Tim Manajemen (Read-Only Strategic Analytics)"
+    ]
+  },
+  "theme": {
+    "default_mode": "light",
+    "toggle_supported": true,
+    "description": "Clean, authoritative academic ERP aesthetic using official Universitas Jember (UNEJ) Deep Blue & Golden Amber paired with fresh Agritech Emerald accents and subtle slate surfaces."
+  },
+  "colors": {
+    "unej_blue_primary": "#0B2545",
+    "unej_blue_dark": "#061528",
+    "unej_blue_light": "#1E3A8A",
+    "unej_yellow_primary": "#F5A623",
+    "unej_yellow_gold": "#FFC72C",
+    "unej_yellow_soft": "#FEF3C7",
+    "agritech_emerald": "#10B981",
+    "agritech_emerald_soft": "#ECFDF5",
+    "surface_background": "#F8FAFC",
+    "surface_card": "#FFFFFF",
+    "surface_sidebar": "#07172C",
+    "border_subtle": "#E2E8F0",
+    "text_primary": "#0F172A",
+    "text_secondary": "#475569",
+    "text_muted": "#64748B",
+    "status_colors": {
+      "draft": { "bg": "#F1F5F9", "text": "#475569", "border": "#CBD5E1" },
+      "active": { "bg": "#ECFDF5", "text": "#047857", "border": "#A7F3D0" },
+      "expired": { "bg": "#FEF2F2", "text": "#B91C1C", "border": "#FECACA" },
+      "superseded": { "bg": "#FFFBEB", "text": "#B45309", "border": "#FDE68A" },
+      "activity_ongoing": { "bg": "#EFF6FF", "text": "#1D4ED8", "border": "#BFDBFE" },
+      "activity_completed": { "bg": "#F0FDF4", "text": "#15803D", "border": "#BBF7D0" },
+      "approval_pending": { "bg": "#FFF7ED", "text": "#C2410C", "border": "#FFEDD5" },
+      "approval_approved": { "bg": "#ECFDF5", "text": "#047857", "border": "#A7F3D0" },
+      "approval_rejected": { "bg": "#FEF2F2", "text": "#B91C1C", "border": "#FECACA" },
+      "eligible": { "bg": "#F0FDF4", "text": "#166534", "border": "#86EFAC" },
+      "implemented": { "bg": "#EFF6FF", "text": "#1E40AF", "border": "#93C5FD" }
+    }
+  },
+  "typography": {
+    "heading_font": "'Plus Jakarta Sans', sans-serif",
+    "body_font": "'Inter', sans-serif",
+    "mono_font": "'JetBrains Mono', monospace",
+    "hierarchy": {
+      "h1_hero": "text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-slate-900 leading-tight",
+      "h2_section": "text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-slate-900",
+      "h3_card": "text-lg sm:text-xl font-semibold text-slate-900",
+      "h4_subheading": "text-sm font-bold uppercase tracking-wider text-slate-500",
+      "body_text": "text-sm sm:text-base text-slate-700 leading-relaxed",
+      "caption_text": "text-xs text-slate-500 leading-normal"
+    }
+  },
+  "layout_strategy": {
+    "mode": "High Density Institutional Dashboard & Repository (Mode B Bento Grid)",
+    "container_max_width": "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8",
+    "sidebar": "Fixed left sidebar with UNEJ Deep Blue gradient overlay, role indicator pill, collapsible navigation links, active highlight in UNEJ Gold accent",
+    "top_header": "Sticky translucent glass header (`backdrop-blur-md bg-white/80 border-b border-slate-200`) featuring UNEJ official logo badge, full system name, search bar, notification center bell with unread badge, and user role switcher",
+    "grid_gap": "gap-4 md:gap-6",
+    "card_padding": "p-5 sm:p-6"
+  },
+  "components": {
+    "login_page": {
+      "student_flow": "Magic-link email login with NIM verification, instant OTP simulation, student profile pre-fill",
+      "staff_flow": "NIP / Email + Password auth with Role Selection (Admin, Tim Kerja Sama, Tim MBKM, Tim Manajemen)",
+      "branding_hero": "Split visual screen showcasing UNEJ emblem, agricultural technology imagery, and key statistical highlights"
+    },
+    "kpi_dashboard": {
+      "kpi_cards": [
+        "Total Mitra Aktif (Count & YoY Growth)",
+        "Dokumen PKS / IA / MoU Active (Expiring Soon Alert)",
+        "Tingkat Realisasi Kegiatan (Dual Status Overview)",
+        "Cakupan Kampus Berdampak (Eligible vs Implemented Ratio)",
+        "Keterlibatan Dosen & Mahasiswa (MBKM & Riset Industri)"
+      ],
+      "charts": [
+        "Tren Pertumbuhan Partner Industri (Recharts Area Chart)",
+        "Distribusi Status Dokumen (Recharts Donut/Pie Chart)",
+        "Tren Implementasi Kegiatan per Semester (Recharts Bar Chart)",
+        "Coverage Radar & Keterlibatan Dosen/Mahasiswa (Recharts Radar/Bar Chart)"
+      ]
+    },
+    "master_partner_database": {
+      "features": [
+        "Single Source of Truth Partner Registry",
+        "Duplicate Partner Detection Engine (Alert Banner on duplicate NIB/Name)",
+        "Partner 360 Detail View (Profile, Address, Sector, Active MoUs/PKS, Contact Person, Audit History)",
+        "Filterable by Industry Sector, Region, Partnership Status, Active Documents",
+        "Search with instant debounced filtering"
+      ]
+    },
+    "document_repository": {
+      "document_types": ["MoU (Nota Kesepahaman)", "PKS (Perjanjian Kerja Sama)", "IA (Implementation Arrangement)", "Prospektif Target"],
+      "features": [
+        "Version History Log (v1.0, v1.1, v2.0 with changelog & author NIP)",
+        "Status Badges: Draft, Active, Expired, Superseded",
+        "Expiry Warning Alerts (30/60/90 days countdown)",
+        "Document File Preview modal & Download button"
+      ]
+    },
+    "implementation_module": {
+      "dual_status_matrix": {
+        "activity_status": ["Belum Dimulai", "Sedang Berjalan", "Selesai", "Tertunda"],
+        "approval_status": ["Drafting", "Menunggu Persetujuan Admin", "Disetujui Tim Kerja Sama", "Ditolak (dengan Catatan)"]
+      },
+      "features": [
+        "Submit Output & Bukti Implementsasi (Link/File upload simulation)",
+        "Dosen & Mahasiswa Assignee list",
+        "Funding & Budget Allocation Tracking"
+      ]
+    },
+    "kampus_berdampak_module": {
+      "features": [
+        "Eligibility Checker Matrix (Kriteria IKU / MBKM / Riset Terapan)",
+        "Eligible vs Implemented Dual View",
+        "Impact Score & Student Credit Equivalency (SKS)"
+      ]
+    },
+    "audit_trail": {
+      "features": [
+        "Immutable Log Table with Timestamp, User ID, Role, Action Type, Entity Affected, IP Address",
+        "Exportable Log and Filter by Date Range / User Role"
+      ]
+    },
+    "reports_and_export": {
+      "report_types": ["Laporan Implementasi", "Laporan Per Partner", "Laporan Tahunan", "Laporan Kampus Berdampak", "Laporan MBKM"],
+      "export_options": ["PDF Official Document Print View", "Excel Spreadsheet Dataset Export"]
+    },
+    "in_app_notifications": {
+      "features": [
+        "Slide-over panel for critical alerts (Document Expiry, Approval Requests, New Partner Added)",
+        "Mark as Read / Mark All as Read actions"
+      ]
+    }
+  },
+  "image_urls": [
+    {
+      "url": "https://images.unsplash.com/photo-1615811361523-6bd03d7748e7?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzN8MHwxfHNlYXJjaHw0fHxhZ3JpY3VsdHVyYWwlMjB0ZWNobm9sb2d5JTIwc21hcnQlMjBmYXJtaW5nJTIwaW5kdXN0cnklMjBwYXJ0bmVyc2hpcHxlbnwwfHx8fDE3ODk0Njk2MjR8MA&ixlib=rb-4.1.0&q=85",
+      "category": "hero_bg",
+      "description": "Smart agricultural machinery in green field representing agro-industrial innovation"
+    },
+    {
+      "url": "https://images.unsplash.com/photo-1627920769541-daa658ed6b59?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzN8MHwxfHNlYXJjaHwzfHxhZ3JpY3VsdHVyYWwlMjB0ZWNobm9sb2d5JTIwc21hcnQlMjBmYXJtaW5nJTIwaW5kdXN0cnklMjBwYXJ0bmVyc2hpcHxlbnwwfHx8fDE3ODk0Njk2MjR8MA&ixlib=rb-4.1.0&q=85",
+      "category": "industrial_field",
+      "description": "Aerial view of precision sprayers moving through corn field"
+    },
+    {
+      "url": "https://images.pexels.com/photos/3912518/pexels-photo-3912518.jpeg",
+      "category": "agritech_research",
+      "description": "Agritech scientist in research laboratory holding hydroponic crop tray"
+    },
+    {
+      "url": "https://images.pexels.com/photos/3912519/pexels-photo-3912519.jpeg",
+      "category": "lab_analysis",
+      "description": "Agricultural technology researcher handling soil and plant quality samples"
+    }
+  ],
+  "motion_and_interactions": {
+    "framer_motion_usage": "Page transitions with light fade and slide-up, tab switching smooth indicators, modal dialog scale-in, accordion transitions",
+    "hover_states": "Interactive table rows show subtle background tint (`hover:bg-slate-50/80`), buttons feature standard transform scaling (`active:scale-95 transition-transform duration-150`), status badges highlight on hover",
+    "toast_notifications": "Use `sonner` toast triggers for all CRUD actions (Saved, Updated, Deleted, Exported, Notification Dismissed)"
+  },
+  "accessibility_and_testing": {
+    "data_testid_rule": "MUST add `data-testid` on all buttons, links, search inputs, dropdown triggers, document action items, table rows, and status badges using kebab-case role naming (e.g. data-testid='partner-table-row-1', data-testid='btn-export-pdf', data-testid='select-role-filter')",
+    "contrast_ratio": "Text colors must maintain minimum 4.5:1 ratio over white and slate backgrounds. Dark surfaces strictly use `#FFFFFF` or `#F8FAFC` high contrast text.",
+    "focus_states": "Ring focus indicators on all inputs and interactive buttons using `focus:ring-2 focus:ring-amber-500 focus:outline-none`."
+  },
+  "instructions_to_main_agent": [
+    "Always display the full unabbreviated institutional title 'Sistem Terintegrasi Kemitraan Teknologi Industri Pertanian — Program Studi Teknologi Industri Pertanian, Fakultas Teknologi Pertanian, Universitas Jember' prominently in header or banner.",
+    "Follow the primary palette: UNEJ Blue (#0B2545) and UNEJ Yellow Gold (#F5A623 / #FFC72C) with Agritech Emerald accents.",
+    "Implement full mock data for all key modules: Master Partner Database, Document Repository with Versioning, Implementation Module (Dual Status), Kampus Berdampak, Audit Trail, Reports with export simulation, In-app Notifications, and Login (Magic Link + Password).",
+    "Ensure all interactive UI controls have appropriate `data-testid` attributes.",
+    "Use standard Lucide icons and Recharts for data visualizations.",
+    "Use Sonner for toast feedback across all interactions."
+  ]
+}
