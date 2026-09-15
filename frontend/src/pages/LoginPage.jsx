@@ -49,10 +49,10 @@ export default function LoginPage() {
       {/* Brand panel */}
       <div className="hidden lg:flex lg:w-1/2 sidebar-gradient relative overflow-hidden flex-col justify-between p-12">
         <div
-          className="absolute inset-0 opacity-20"
-          style={{ backgroundImage: "url(https://images.unsplash.com/photo-1615811361523-6bd03d7748e7?crop=entropy&cs=srgb&fm=jpg&w=1200&q=80)", backgroundSize: "cover", backgroundPosition: "center" }}
+          className="absolute inset-0"
+          style={{ backgroundImage: "url(/agro-bg.jpg)", backgroundSize: "cover", backgroundPosition: "center" }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0B2545]/70 to-[#061528]/95" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0B2545]/70 via-[#0B2545]/65 to-[#061528]/95" />
         <div className="relative">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#F5A623] to-[#FFC72C] flex items-center justify-center shadow-xl">
@@ -65,9 +65,7 @@ export default function LoginPage() {
           </div>
         </div>
         <div className="relative">
-          <div className="inline-flex bg-white rounded-2xl shadow-2xl p-5 mb-8">
-            <img src="/tip-logo.png" alt="Logo Teknologi Industri Pertanian" className="h-24 w-auto" data-testid="tip-logo" />
-          </div>
+          <img src="/tip-logo.png" alt="Logo Teknologi Industri Pertanian" data-testid="tip-logo" className="h-28 w-auto mb-8 drop-shadow-[0_4px_12px_rgba(0,0,0,0.4)]" />
           <h2 className="font-display font-extrabold text-white text-3xl xl:text-4xl leading-tight">
             Sistem Informasi<br />Kerjasama Terintegrasi
           </h2>

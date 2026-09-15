@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import DosenMultiSelect from "@/components/DosenMultiSelect";
 
 const KEGIATAN = ["Belum Dimulai", "Dalam Proses", "Selesai", "Tertunda"];
 const TRIWULAN = ["Q1", "Q2", "Q3", "Q4"];
@@ -190,7 +191,7 @@ export default function ImplementationsPage() {
                   <SelectContent>{KEGIATAN.map((k) => <SelectItem key={k} value={k}>{k}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div className="sm:col-span-2"><Label>Nama Dosen Terlibat</Label><Textarea data-testid="impl-dosen-input" value={(form.dosen_list || []).join("\n")} className="mt-1.5" rows={3} onChange={(e) => setForm({ ...form, dosen_list: e.target.value.split("\n") })} placeholder="Satu nama per baris" /><p className="text-[11px] text-slate-400 mt-1">Jumlah dosen dihitung otomatis dari daftar nama.</p></div>
+              <div className="sm:col-span-2"><Label>Nama Dosen Terlibat</Label><DosenMultiSelect value={form.dosen_list || []} onChange={(list) => setForm({ ...form, dosen_list: list })} /><p className="text-[11px] text-slate-400 mt-1">Pilih dari daftar dosen TIP. Jumlah dosen dihitung otomatis.</p></div>
               <div className="sm:col-span-2"><Label>Nama Mahasiswa Terlibat</Label><Textarea data-testid="impl-mahasiswa-input" value={(form.mahasiswa_list || []).join("\n")} className="mt-1.5" rows={4} onChange={(e) => setForm({ ...form, mahasiswa_list: e.target.value.split("\n") })} placeholder="Satu nama per baris" /><p className="text-[11px] text-slate-400 mt-1">Jumlah mahasiswa dihitung otomatis dari daftar nama.</p></div>
               <div className="sm:col-span-2"><Label>Link Output / Bukti</Label><Input data-testid="impl-link-input" value={form.link_output} className="mt-1.5" onChange={(e) => setForm({ ...form, link_output: e.target.value })} placeholder="https://…" /></div>
               <div className="sm:col-span-2">
