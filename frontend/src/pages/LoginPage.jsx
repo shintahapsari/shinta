@@ -66,7 +66,7 @@ export default function LoginPage() {
         </div>
         <div className="relative">
           <h2 className="font-display font-extrabold text-white text-3xl xl:text-4xl leading-tight">
-            Single Source of Truth<br />Kemitraan Industri Agro
+            Sistem Informasi<br />Kerjasama Terintegrasi
           </h2>
           <p className="text-slate-300 mt-4 max-w-md leading-relaxed">
             Kelola siklus kerja sama, dokumen PKS/IA/MoU, implementasi kegiatan, dan program
