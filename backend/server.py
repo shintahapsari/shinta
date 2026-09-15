@@ -6,6 +6,7 @@ load_dotenv(ROOT_DIR / ".env")
 import os
 import re
 import uuid
+import unicodedata
 import logging
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional
@@ -106,6 +107,7 @@ class ImplementationIn(BaseModel):
     jenis_kegiatan: str
     judul: str
     scope_mbkm: bool = False
+    kampus_berdampak: bool = False
     status_kegiatan: str = "On Process"
     link_output: Optional[str] = ""
     region: Optional[str] = ""
@@ -323,7 +325,8 @@ async def update_user(uid: str, body: dict, request: Request, user=Depends(requi
 
 # ---------------- Partners ----------------
 def norm(s: str) -> str:
-    return re.sub(r"[^a-z0-9]", "", (s or "").lower())
+    s = unicodedata.normalize("NFKD", s or "").encode("ascii", "ignore").decode("ascii")
+    return re.sub(r"[^a-z0-9]", "", s.lower())
 
 
 @api.get("/partners")
@@ -400,7 +403,7 @@ async def update_partner(pid: str, body: PartnerIn, request: Request, user=Depen
 
 
 @api.delete("/partners/{pid}")
-async def delete_partner(pid: str, request: Request, user=Depends(require_roles("admin"))):
+async def delete_partner(pid: str, request: Request, user=Depends(require_roles("admin", "tim_kerjasama"))):
     await db.partners.delete_one({"id": pid})
     await audit(user, "DELETE", "partner", pid, "Menghapus mitra", request)
     return {"message": "Dihapus"}
@@ -421,8 +424,23 @@ async def list_documents(user=Depends(get_current_user), partner_id: str = "", j
         query["is_latest"] = True
     docs = await db.documents.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
     pmap = {p["id"]: p["nama"] for p in await db.partners.find({}, {"_id": 0, "id": 1, "nama": 1}).to_list(2000)}
+    now = datetime.now(timezone.utc)
     for d in docs:
         d["partner_nama"] = pmap.get(d["partner_id"], "-")
+        d["days_to_expiry"] = None
+        d["expiring_soon"] = False
+        d["expired"] = d.get("status") == "Expired"
+        if d.get("tanggal_berakhir"):
+            try:
+                end = datetime.fromisoformat(str(d["tanggal_berakhir"])[:10]).replace(tzinfo=timezone.utc)
+                days = (end - now).days
+                d["days_to_expiry"] = days
+                if days < 0:
+                    d["expired"] = True
+                elif d.get("status") == "Active" and days <= 90:
+                    d["expiring_soon"] = True
+            except Exception:
+                pass
     return docs
 
 
@@ -549,7 +567,7 @@ async def set_approval(iid: str, body: ApprovalIn, request: Request, user=Depend
 async def compute_kampus_berdampak():
     partners = await db.partners.find({}, {"_id": 0}).to_list(2000)
     active_docs = await db.documents.find({"status": "Active", "jenis": {"$in": ["PKS", "IA", "MoU"]}, "is_latest": True}, {"_id": 0}).to_list(2000)
-    approved_impls = await db.implementations.find({"status_approval": "Approved"}, {"_id": 0}).to_list(2000)
+    approved_impls = await db.implementations.find({"status_approval": "Approved", "kampus_berdampak": True}, {"_id": 0}).to_list(2000)
     active_partner_ids = {d["partner_id"] for d in active_docs}
     impl_partner_ids = {i["partner_id"] for i in approved_impls}
     pmap = {p["id"]: p for p in partners}
@@ -575,7 +593,7 @@ async def compute_kampus_berdampak():
 
 
 @api.get("/kampus-berdampak")
-async def kampus_berdampak(user=Depends(get_current_user)):
+async def kampus_berdampak(user=Depends(require_roles("admin", "tim_kerjasama", "tim_mbkm", "tim_manajemen"))):
     return await compute_kampus_berdampak()
 
 

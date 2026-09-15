@@ -3,7 +3,7 @@ import api, { formatApiErrorDetail } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { WRITE_ROLES } from "@/lib/constants";
 import StatusBadge from "@/components/StatusBadge";
-import { FileText, Plus, Loader2, History, GitBranch } from "lucide-react";
+import { FileText, Plus, Loader2, History, GitBranch, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -113,6 +113,16 @@ export default function DocumentsPage() {
         </Select>
       </div>
 
+      {docs.some((d) => d.expiring_soon) && (
+        <div data-testid="expiry-warning-banner" className="flex items-start gap-2 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm">
+          <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
+          <div>
+            <span className="font-semibold">{docs.filter((d) => d.expiring_soon).length} dokumen kerja sama mendekati masa berakhir.</span>
+            {" "}Segera lakukan pembaruan (revisi) dokumen agar status kerja sama tetap aktif.
+          </div>
+        </div>
+      )}
+
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto scroll-thin">
           <table className="w-full text-sm">
@@ -138,7 +148,14 @@ export default function DocumentsPage() {
                   <td className="px-4 py-3"><StatusBadge status={d.jenis === "Prospektif" ? "Prospektif" : d.jenis} /></td>
                   <td className="px-4 py-3 hidden md:table-cell text-slate-600">{d.partner_nama}</td>
                   <td className="px-4 py-3 hidden lg:table-cell text-slate-500 text-xs">{d.tanggal_mulai || "—"} → {d.tanggal_berakhir || "tanpa expiry"}</td>
-                  <td className="px-4 py-3"><StatusBadge status={d.status} testid={`document-status-${idx}`} /></td>
+                  <td className="px-4 py-3">
+                    <StatusBadge status={d.status} testid={`document-status-${idx}`} />
+                    {d.expiring_soon && (
+                      <div data-testid={`doc-expiring-${idx}`} className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
+                        <AlertTriangle className="w-3 h-3" /> Perlu pembaruan · {d.days_to_expiry}h lagi
+                      </div>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-right whitespace-nowrap">
                     <Button size="sm" variant="ghost" data-testid={`doc-versions-${idx}`} onClick={() => showVersions(d)} className="text-slate-600">
                       <History className="w-4 h-4" />

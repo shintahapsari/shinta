@@ -3,7 +3,7 @@ import api, { formatApiErrorDetail } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { APPROVE_ROLES } from "@/lib/constants";
 import StatusBadge from "@/components/StatusBadge";
-import { ClipboardList, Plus, Loader2, CheckCircle2, ExternalLink, ShieldCheck } from "lucide-react";
+import { ClipboardList, Plus, Loader2, CheckCircle2, ExternalLink, ShieldCheck, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,6 +29,7 @@ export default function ImplementationsPage() {
   const [fApproval, setFApproval] = useState("all");
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(null);
+  const [editing, setEditing] = useState(null);
   const [saving, setSaving] = useState(false);
   const [appr, setAppr] = useState(null);
 
@@ -46,16 +47,28 @@ export default function ImplementationsPage() {
   useEffect(() => { api.get("/partners").then((r) => setPartners(r.data)).catch(() => {}); }, []);
 
   const openCreate = () => {
-    setForm({ partner_id: "", document_id: null, tahun: new Date().getFullYear(), triwulan: "Q1", jenis_kegiatan: "", judul: "", scope_mbkm: false, status_kegiatan: "On Process", link_output: "", region: "", jumlah_dosen: 0, jumlah_mahasiswa: 0, catatan: "" });
+    setEditing(null);
+    setForm({ partner_id: "", document_id: null, tahun: new Date().getFullYear(), triwulan: "Q1", jenis_kegiatan: "", judul: "", scope_mbkm: false, kampus_berdampak: false, status_kegiatan: "On Process", link_output: "", region: "", jumlah_dosen: 0, jumlah_mahasiswa: 0, catatan: "" });
+    setOpen(true);
+  };
+  const openEdit = (i) => {
+    setEditing(i);
+    setForm({ ...i });
     setOpen(true);
   };
 
   const save = async () => {
     if (!form.partner_id || !form.judul.trim() || !form.jenis_kegiatan.trim()) { toast.error("Mitra, judul, dan jenis kegiatan wajib diisi"); return; }
     setSaving(true);
+    const payload = { ...form, tahun: Number(form.tahun), jumlah_dosen: Number(form.jumlah_dosen), jumlah_mahasiswa: Number(form.jumlah_mahasiswa) };
     try {
-      await api.post("/implementations", { ...form, tahun: Number(form.tahun), jumlah_dosen: Number(form.jumlah_dosen), jumlah_mahasiswa: Number(form.jumlah_mahasiswa) });
-      toast.success("Implementasi diajukan (menunggu verifikasi)");
+      if (editing) {
+        await api.put(`/implementations/${editing.id}`, payload);
+        toast.success("Implementasi diperbarui");
+      } else {
+        await api.post("/implementations", payload);
+        toast.success("Implementasi diajukan (menunggu verifikasi)");
+      }
       setOpen(false); load();
     } catch (err) {
       toast.error(formatApiErrorDetail(err.response?.data?.detail));
@@ -106,6 +119,7 @@ export default function ImplementationsPage() {
                 <div className="flex items-center gap-2 flex-wrap">
                   <h3 className="font-display font-semibold text-[#0B2545]">{i.judul}</h3>
                   {i.scope_mbkm && <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 font-semibold">MBKM</span>}
+                  {i.kampus_berdampak && <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-semibold">Kampus Berdampak</span>}
                 </div>
                 <p className="text-sm text-slate-500 mt-0.5">{i.partner_nama} · {i.jenis_kegiatan}</p>
                 <p className="text-xs text-slate-400 mt-1">{i.tahun} {i.triwulan} · {i.region || "—"} · {i.jumlah_dosen} dosen, {i.jumlah_mahasiswa} mahasiswa</p>
@@ -122,6 +136,11 @@ export default function ImplementationsPage() {
                       <ExternalLink className="w-3 h-3" /> Bukti
                     </a>
                   )}
+                  {canCreate && (
+                    <Button size="sm" variant="ghost" data-testid={`impl-edit-${idx}`} onClick={() => openEdit(i)} className="text-[#0B2545]">
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                  )}
                   {canApprove && (
                     <Button size="sm" variant="outline" data-testid={`impl-verify-${idx}`} onClick={() => setAppr({ id: i.id, judul: i.judul, catatan: "" })}>
                       <ShieldCheck className="w-4 h-4 mr-1" /> Verifikasi
@@ -137,7 +156,7 @@ export default function ImplementationsPage() {
       {/* Create dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto scroll-thin">
-          <DialogHeader><DialogTitle className="font-display text-[#0B2545]">Ajukan Implementasi Kegiatan</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="font-display text-[#0B2545]">{editing ? "Edit Implementasi Kegiatan" : "Ajukan Implementasi Kegiatan"}</DialogTitle></DialogHeader>
           {form && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
@@ -168,6 +187,17 @@ export default function ImplementationsPage() {
               <div><Label>Jumlah Dosen</Label><Input type="number" value={form.jumlah_dosen} className="mt-1.5" onChange={(e) => setForm({ ...form, jumlah_dosen: e.target.value })} /></div>
               <div><Label>Jumlah Mahasiswa</Label><Input type="number" value={form.jumlah_mahasiswa} className="mt-1.5" onChange={(e) => setForm({ ...form, jumlah_mahasiswa: e.target.value })} /></div>
               <div className="sm:col-span-2"><Label>Link Output / Bukti</Label><Input data-testid="impl-link-input" value={form.link_output} className="mt-1.5" onChange={(e) => setForm({ ...form, link_output: e.target.value })} placeholder="https://…" /></div>
+              <div className="sm:col-span-2">
+                <Label>Kategori Kampus Berdampak</Label>
+                <Select value={form.kampus_berdampak ? "ya" : "tidak"} onValueChange={(v) => setForm({ ...form, kampus_berdampak: v === "ya" })}>
+                  <SelectTrigger data-testid="impl-kb-select" className="mt-1.5"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ya">Kampus Berdampak</SelectItem>
+                    <SelectItem value="tidak">Bukan Kampus Berdampak</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-slate-400 mt-1">Kegiatan Kampus Berdampak otomatis masuk dashboard Kampus Berdampak setelah diverifikasi (Approved) oleh Tim Kerja Sama.</p>
+              </div>
               <div className="sm:col-span-2 flex items-center gap-2">
                 <Checkbox id="mbkm" data-testid="impl-mbkm-checkbox" checked={form.scope_mbkm} onCheckedChange={(v) => setForm({ ...form, scope_mbkm: !!v })} />
                 <Label htmlFor="mbkm" className="cursor-pointer">Termasuk lingkup MBKM</Label>
@@ -177,7 +207,7 @@ export default function ImplementationsPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Batal</Button>
             <Button data-testid="save-impl-button" onClick={save} disabled={saving} className="bg-[#0B2545] text-white">
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Ajukan"}
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : (editing ? "Simpan Perubahan" : "Ajukan")}
             </Button>
           </DialogFooter>
         </DialogContent>

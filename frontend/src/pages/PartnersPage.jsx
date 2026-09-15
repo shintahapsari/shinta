@@ -4,7 +4,7 @@ import api, { formatApiErrorDetail } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { WRITE_ROLES } from "@/lib/constants";
 import StatusBadge from "@/components/StatusBadge";
-import { Building2, Search, Plus, Eye, Loader2, AlertTriangle, Mail, Phone, User } from "lucide-react";
+import { Building2, Search, Plus, Eye, Loader2, AlertTriangle, Mail, Phone, User, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,6 +21,8 @@ export default function PartnersPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const canWrite = WRITE_ROLES.includes(user.role);
+  const canDelete = ["admin", "tim_kerjasama"].includes(user.role);
+  const [editing, setEditing] = useState(null);
   const [partners, setPartners] = useState([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
@@ -51,13 +53,32 @@ export default function PartnersPage() {
     } catch { /* */ }
   };
 
+  const openCreate = () => { setEditing(null); setForm(EMPTY); setDupes([]); setOpen(true); };
+  const openEdit = (p) => { setEditing(p); setForm({ ...EMPTY, ...p }); setDupes([]); setOpen(true); };
+
+  const remove = async (p) => {
+    if (!window.confirm(`Hapus mitra "${p.nama}"? Tindakan ini permanen.`)) return;
+    try {
+      await api.delete(`/partners/${p.id}`);
+      toast.success("Mitra dihapus");
+      load();
+    } catch (err) {
+      toast.error(formatApiErrorDetail(err.response?.data?.detail));
+    }
+  };
+
   const save = async () => {
     if (!form.nama.trim()) { toast.error("Nama mitra wajib diisi"); return; }
     setSaving(true);
     try {
-      await api.post("/partners", form);
-      toast.success("Mitra berhasil ditambahkan");
-      setOpen(false); setForm(EMPTY); setDupes([]);
+      if (editing) {
+        await api.put(`/partners/${editing.id}`, form);
+        toast.success("Mitra berhasil diperbarui");
+      } else {
+        await api.post("/partners", form);
+        toast.success("Mitra berhasil ditambahkan");
+      }
+      setOpen(false); setForm(EMPTY); setDupes([]); setEditing(null);
       load();
     } catch (err) {
       toast.error(formatApiErrorDetail(err.response?.data?.detail));
@@ -74,14 +95,14 @@ export default function PartnersPage() {
           <p className="text-slate-500 text-sm mt-1">Single source of truth database mitra industri.</p>
         </div>
         {canWrite && (
-          <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setForm(EMPTY); setDupes([]); } }}>
+          <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setForm(EMPTY); setDupes([]); setEditing(null); } }}>
             <DialogTrigger asChild>
-              <Button data-testid="add-partner-button" className="bg-[#0B2545] hover:bg-[#061528] text-white active:scale-95 transition-transform">
+              <Button data-testid="add-partner-button" onClick={openCreate} className="bg-[#0B2545] hover:bg-[#061528] text-white active:scale-95 transition-transform">
                 <Plus className="w-4 h-4 mr-1.5" /> Tambah Mitra
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto scroll-thin">
-              <DialogHeader><DialogTitle className="font-display text-[#0B2545]">Tambah Mitra Baru</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle className="font-display text-[#0B2545]">{editing ? "Edit Mitra" : "Tambah Mitra Baru"}</DialogTitle></DialogHeader>
               {dupes.length > 0 && (
                 <div data-testid="duplicate-alert" className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm">
                   <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
@@ -124,7 +145,7 @@ export default function PartnersPage() {
               <DialogFooter>
                 <Button variant="outline" onClick={() => setOpen(false)}>Batal</Button>
                 <Button data-testid="save-partner-button" onClick={save} disabled={saving} className="bg-[#0B2545] text-white">
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Simpan Mitra"}
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : (editing ? "Simpan Perubahan" : "Simpan Mitra")}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -179,10 +200,20 @@ export default function PartnersPage() {
                   </td>
                   <td className="px-4 py-3 text-center font-semibold text-emerald-600">{p.active_docs}</td>
                   <td className="px-4 py-3 text-center font-semibold text-blue-600">{p.impl_count}</td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-right whitespace-nowrap">
                     <Button size="sm" variant="ghost" data-testid={`view-partner-${idx}`} onClick={() => navigate(`/partners/${p.id}`)} className="text-[#0B2545]">
                       <Eye className="w-4 h-4 mr-1" /> 360°
                     </Button>
+                    {canWrite && (
+                      <Button size="sm" variant="ghost" data-testid={`edit-partner-${idx}`} onClick={() => openEdit(p)} className="text-slate-600">
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                    )}
+                    {canDelete && (
+                      <Button size="sm" variant="ghost" data-testid={`delete-partner-${idx}`} onClick={() => remove(p)} className="text-red-600">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
                   </td>
                 </tr>
               ))}
