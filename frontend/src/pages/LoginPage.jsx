@@ -65,6 +65,9 @@ export default function LoginPage() {
           </div>
         </div>
         <div className="relative">
+          <div className="inline-flex bg-white rounded-2xl shadow-2xl p-5 mb-8">
+            <img src="/tip-logo.png" alt="Logo Teknologi Industri Pertanian" className="h-24 w-auto" data-testid="tip-logo" />
+          </div>
           <h2 className="font-display font-extrabold text-white text-3xl xl:text-4xl leading-tight">
             Sistem Informasi<br />Kerjasama Terintegrasi
           </h2>
