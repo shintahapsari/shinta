@@ -1,21 +1,31 @@
-"""Emergent-managed Resend email with structural guardrail gate."""
+"""Direct Resend email sending with a structural guardrail gate.
+
+Self-hosted: sends transactional email via the official Resend API using
+your own RESEND_API_KEY (no Emergent dependency). Falls back gracefully
+(skips sending) when the key is not configured so the app never crashes.
+"""
 import os
 import re
+import asyncio
 import ipaddress
 import logging
-import httpx
+import resend
 from html import escape
 from html.parser import HTMLParser
 from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
-EMAIL_BASE_URL = "https://integrations.emergentagent.com"
-# Use .get() so the module imports cleanly on any host (e.g. Vercel/Railway/Render)
-# even before the email key is configured. Sending is guarded at runtime below.
-EMAIL_KEY = os.environ.get("EMERGENT_EMAIL_KEY")
+# --- Resend configuration (bring your own key) ---
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY")
+# Verified sender. Use "onboarding@resend.dev" for testing, or an address on a
+# domain you verified in Resend (e.g. kemitraan@yourdomain.com) for production.
+SENDER_EMAIL = os.environ.get("SENDER_EMAIL", "onboarding@resend.dev")
 EMAIL_FROM_NAME = os.environ.get("EMAIL_FROM_NAME", "Kemitraan TIP Universitas Jember")
 EMAIL_REPLY_TO = os.environ.get("EMAIL_REPLY_TO")
+
+if RESEND_API_KEY:
+    resend.api_key = RESEND_API_KEY
 
 _SHORTENERS = ("bit.ly", "tinyurl.com", "t.co", "is.gd", "cutt.ly", "goo.gl", "rebrand.ly")
 _CRED_ASK = ("reply with your password", "reply with the code", "send your password", "cvv",
@@ -91,22 +101,24 @@ def _assert_safe_email(subject: str, html: str) -> None:
 
 
 async def send_email(*, to: str, subject: str, html: str) -> str | None:
-    if not EMAIL_KEY:
-        logger.warning("EMERGENT_EMAIL_KEY not set; skipping email send to %s", to)
+    if not RESEND_API_KEY:
+        logger.warning("RESEND_API_KEY not set; skipping email send to %s", to)
         return None
     _assert_safe_email(subject, html)
-    payload = {"to": [to], "subject": subject, "html": html, "from_name": EMAIL_FROM_NAME}
+    params = {
+        "from": f"{EMAIL_FROM_NAME} <{SENDER_EMAIL}>",
+        "to": [to],
+        "subject": subject,
+        "html": html,
+    }
     if EMAIL_REPLY_TO:
-        payload["contact_email"] = EMAIL_REPLY_TO
+        params["reply_to"] = EMAIL_REPLY_TO
     try:
-        async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.post(
-                f"{EMAIL_BASE_URL}/api/v1/email/send",
-                headers={"X-Email-Key": EMAIL_KEY},
-                json=payload,
-            )
-        resp.raise_for_status()
-        return resp.json().get("id")
+        # Resend SDK is synchronous; run in a thread to keep FastAPI non-blocking.
+        result = await asyncio.to_thread(resend.Emails.send, params)
+        if isinstance(result, dict):
+            return result.get("id")
+        return getattr(result, "id", None)
     except Exception as e:
         logger.error(f"Email send error: {str(e)}")
         return None
