@@ -906,10 +906,18 @@ async def root():
 
 
 app.include_router(api)
+
+# CORS origins: FRONTEND_URL + localhost + any extra comma-separated origins
+# provided via EXTRA_CORS_ORIGINS (e.g. your Vercel production & preview URLs).
+_cors_origins = [FRONTEND_URL, "http://localhost:3000"]
+_extra = os.environ.get("EXTRA_CORS_ORIGINS", "")
+_cors_origins += [o.strip() for o in _extra.split(",") if o.strip()]
+_allow_origin_regex = os.environ.get("CORS_ORIGIN_REGEX")  # e.g. https://.*\.vercel\.app
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=[FRONTEND_URL, "http://localhost:3000"],
+    allow_origins=list(dict.fromkeys(_cors_origins)),
+    allow_origin_regex=_allow_origin_regex,
     allow_methods=["*"],
     allow_headers=["*"],
 )
