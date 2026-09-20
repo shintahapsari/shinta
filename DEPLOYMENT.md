@@ -9,7 +9,7 @@ Susunan paling stabil & tetap gratis:
 Frontend (React)   ->  Vercel (Hobby / gratis)     ->  https://namaapp.vercel.app
 Backend  (FastAPI) ->  Render Free / Railway        ->  https://shinta-backend.onrender.com
 Database (MongoDB) ->  MongoDB Atlas (M0 gratis)     ->  mongodb+srv://...
-Email    (Resend)  ->  API key Resend Anda sendiri   ->  re_xxx
+Email    (Gmail)   ->  Gmail SMTP + App Password     ->  smtp.gmail.com
 ```
 
 > File deploy sudah disiapkan di repo:
@@ -36,17 +36,18 @@ Email    (Resend)  ->  API key Resend Anda sendiri   ->  re_xxx
 
 ---
 
-## LANGKAH 2 — Resend (Email)
+## LANGKAH 2 — Gmail SMTP (Email)
 
-1. Buka https://resend.com → daftar / login.
-2. **API Keys** → **Create API Key** → salin (format `re_...`). Ini nilai `RESEND_API_KEY`.
-3. Alamat pengirim (`SENDER_EMAIL`):
-   - **Testing cepat:** `onboarding@resend.dev` → tapi Resend hanya kirim ke email **pemilik akun** Anda.
-   - **Produksi:** **Domains** → **Add Domain** → set record DNS (SPF/DKIM) → tunggu "Verified".
-     Lalu pakai alamat di domain itu, mis. `kemitraan@domainanda.com`, agar bisa kirim ke semua `@unej.ac.id`.
+Email dikirim langsung dari akun Gmail Anda (gratis, kuota ±500 email/hari). Tidak perlu daftar layanan lain.
 
-> Kode sudah memakai Resend SDK langsung. Bila `RESEND_API_KEY` kosong, email otomatis di-skip
-> (aplikasi tetap jalan, tidak crash).
+1. Buka https://myaccount.google.com/security → aktifkan **Verifikasi 2 Langkah** (wajib).
+2. Buka https://myaccount.google.com/apppasswords → nama aplikasi mis. `Kemitraan TIP` → **Create**.
+3. Salin sandi 16 karakter yang muncul (spasi boleh ikut, akan dihapus otomatis). Ini nilai `SMTP_PASSWORD`.
+4. `SMTP_USER` = alamat Gmail Anda (mis. `shintasyafrina9801@gmail.com`).
+
+> Kode memakai `smtplib` bawaan Python (tanpa library tambahan). Bila `SMTP_USER`/`SMTP_PASSWORD` kosong,
+> email otomatis di-skip (aplikasi tetap jalan, tidak crash). Untuk login mahasiswa, tautan magic-link juga
+> ditampilkan langsung di layar login sebagai cadangan.
 
 ---
 
@@ -81,8 +82,8 @@ Untuk update terbaru, gunakan tombol **Save to Github** di kolom chat Emergent (
    | `ADMIN_PASSWORD` | `AdminUNEJ2026!` |
    | `FRONTEND_URL` | (isi setelah Vercel jadi, mis. `https://shinta.vercel.app`) |
    | `CORS_ORIGIN_REGEX` | `https://.*\.vercel\.app` |
-   | `RESEND_API_KEY` | `re_...` (dari Langkah 2) |
-   | `SENDER_EMAIL` | `onboarding@resend.dev` atau alamat domain terverifikasi Anda |
+   | `SMTP_USER` | alamat Gmail Anda (Langkah 2) |
+   | `SMTP_PASSWORD` | App Password 16 karakter (Langkah 2) |
    | `EMAIL_FROM_NAME` | `Kemitraan TIP Universitas Jember` |
    | `WEBHOOK_CRON_SECRET` | `8eab41845e60120b88617081504e49fefc1bc42f99587595cca30f0958b5d59d` |
    | `EMERGENT_LLM_KEY` | `sk-emergent-e9aD74aCb1cA2B3F77` *(opsional, hanya untuk fitur upload berkas — lihat catatan)* |
@@ -137,8 +138,8 @@ ADMIN_EMAIL=shintasyafrina9801@gmail.com
 ADMIN_PASSWORD=AdminUNEJ2026!
 FRONTEND_URL=https://shinta.vercel.app
 CORS_ORIGIN_REGEX=https://.*\.vercel\.app
-RESEND_API_KEY=re_xxxxxxxxxxxxxxxx
-SENDER_EMAIL=onboarding@resend.dev
+SMTP_USER=shintasyafrina9801@gmail.com
+SMTP_PASSWORD=xxxx xxxx xxxx xxxx
 EMAIL_FROM_NAME=Kemitraan TIP Universitas Jember
 WEBHOOK_CRON_SECRET=8eab41845e60120b88617081504e49fefc1bc42f99587595cca30f0958b5d59d
 EMERGENT_LLM_KEY=sk-emergent-e9aD74aCb1cA2B3F77
@@ -153,8 +154,7 @@ REACT_APP_BACKEND_URL=https://shinta-backend.onrender.com
 
 ## Catatan Penting
 
-- **Email:** sudah **mandiri via Resend** (tidak butuh Emergent). Pastikan `RESEND_API_KEY` diisi dan
-  `SENDER_EMAIL` memakai domain terverifikasi untuk produksi.
+- **Email:** sudah **mandiri via Gmail SMTP** (tidak butuh Emergent/Resend). Pastikan `SMTP_USER` dan `SMTP_PASSWORD` diisi.
 - **Upload berkas** (`backend/storage.py`) MASIH memakai object storage bawaan Emergent via `EMERGENT_LLM_KEY`.
   Di luar Emergent ini mungkin tetap jalan selama key valid, tapi TIDAK DIJAMIN. Kode tidak crash bila gagal.
   Untuk 100% mandiri, minta saya pindahkan ke **Cloudflare R2 / AWS S3** dengan kredensial Anda.
@@ -169,4 +169,4 @@ REACT_APP_BACKEND_URL=https://shinta-backend.onrender.com
 - MongoDB Atlas M0: **Gratis**
 - Vercel Hobby: **Gratis**
 - Render Free: **Gratis** (idle sleep) atau Railway ~$5 kredit/bulan
-- Resend: **Gratis** hingga 3.000 email/bulan
+- Gmail SMTP: **Gratis** ±500 email/hari

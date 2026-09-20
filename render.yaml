@@ -28,7 +28,9 @@ services:
         sync: false
       - key: CORS_ORIGIN_REGEX
         sync: false
-      - key: EMERGENT_EMAIL_KEY
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
         sync: false
       - key: EMAIL_FROM_NAME
         sync: false

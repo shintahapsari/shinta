@@ -1,31 +1,29 @@
-"""Direct Resend email sending with a structural guardrail gate.
+"""Gmail SMTP email sending (stdlib smtplib) with a structural guardrail gate.
 
-Self-hosted: sends transactional email via the official Resend API using
-your own RESEND_API_KEY (no Emergent dependency). Falls back gracefully
-(skips sending) when the key is not configured so the app never crashes.
+Uses a Gmail account + App Password (SMTP_USER / SMTP_PASSWORD). Skips sending
+gracefully when credentials are not configured so the app never crashes.
 """
 import os
 import re
 import asyncio
 import ipaddress
 import logging
-import resend
+import smtplib
+from email.message import EmailMessage
+from email.utils import formataddr
 from html import escape
 from html.parser import HTMLParser
 from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
-# --- Resend configuration (bring your own key) ---
-RESEND_API_KEY = os.environ.get("RESEND_API_KEY")
-# Verified sender. Use "onboarding@resend.dev" for testing, or an address on a
-# domain you verified in Resend (e.g. kemitraan@yourdomain.com) for production.
-SENDER_EMAIL = os.environ.get("SENDER_EMAIL", "onboarding@resend.dev")
+SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+SMTP_USER = os.environ.get("SMTP_USER", "")
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "").replace(" ", "")
+SENDER_EMAIL = os.environ.get("SENDER_EMAIL") or SMTP_USER
 EMAIL_FROM_NAME = os.environ.get("EMAIL_FROM_NAME", "Kemitraan TIP Universitas Jember")
 EMAIL_REPLY_TO = os.environ.get("EMAIL_REPLY_TO")
-
-if RESEND_API_KEY:
-    resend.api_key = RESEND_API_KEY
 
 _SHORTENERS = ("bit.ly", "tinyurl.com", "t.co", "is.gd", "cutt.ly", "goo.gl", "rebrand.ly")
 _CRED_ASK = ("reply with your password", "reply with the code", "send your password", "cvv",
@@ -100,25 +98,30 @@ def _assert_safe_email(subject: str, html: str) -> None:
                 raise ValueError(f"Anchor text {m.group(1)!r} != real link host {real!r} (G3)")
 
 
+def _smtp_send(msg: EmailMessage) -> None:
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=30) as s:
+        s.ehlo()
+        s.starttls()
+        s.login(SMTP_USER, SMTP_PASSWORD)
+        s.send_message(msg)
+
+
 async def send_email(*, to: str, subject: str, html: str) -> str | None:
-    if not RESEND_API_KEY:
-        logger.warning("RESEND_API_KEY not set; skipping email send to %s", to)
+    if not SMTP_USER or not SMTP_PASSWORD:
+        logger.warning("SMTP_USER/SMTP_PASSWORD not set; skipping email send to %s", to)
         return None
     _assert_safe_email(subject, html)
-    params = {
-        "from": f"{EMAIL_FROM_NAME} <{SENDER_EMAIL}>",
-        "to": [to],
-        "subject": subject,
-        "html": html,
-    }
+    msg = EmailMessage()
+    msg["From"] = formataddr((EMAIL_FROM_NAME, SENDER_EMAIL))
+    msg["To"] = to
+    msg["Subject"] = subject
     if EMAIL_REPLY_TO:
-        params["reply_to"] = EMAIL_REPLY_TO
+        msg["Reply-To"] = EMAIL_REPLY_TO
+    msg.set_content("Buka email ini dengan klien yang mendukung HTML.")
+    msg.add_alternative(html, subtype="html")
     try:
-        # Resend SDK is synchronous; run in a thread to keep FastAPI non-blocking.
-        result = await asyncio.to_thread(resend.Emails.send, params)
-        if isinstance(result, dict):
-            return result.get("id")
-        return getattr(result, "id", None)
+        await asyncio.to_thread(_smtp_send, msg)
+        return msg["Message-ID"] or f"smtp:{to}"
     except Exception as e:
         logger.error(f"Email send error: {str(e)}")
         return None

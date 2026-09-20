@@ -30,7 +30,7 @@ Sistem Terintegrasi Kemitraan Teknologi Industri Pertanian — Program Studi Tek
 
 ## Deployment eksternal (2026-06/09)
 - DB dipindah ke MongoDB Atlas: `cluster0.vdbfaw5.mongodb.net`, DB_NAME `simetri_tip`. Ping OK, seed 5 akun staf OK, login admin & tim_kerjasama 200, /api/partners 200.
-- Email: Resend SDK langsung (RESEND_API_KEY masih kosong → safe-skip). Storage: masih Emergent proxy (perlu migrasi S3/R2). Panduan: /app/DEPLOYMENT.md.
+- Email: Gmail SMTP via smtplib (SMTP_USER + SMTP_PASSWORD App Password); Resend dihapus. Kosong → safe-skip. Storage: masih Emergent proxy (perlu migrasi S3/R2). Panduan: /app/DEPLOYMENT.md.
 
 ## Verified
 - Backend 36/37 automated tests + manual curl. Duplicate detection fixed (unicode NFKD). tim_kerjasama edit/delete partners 200; impl edit + kampus_berdampak + approve 200; document expiry flags correct.
