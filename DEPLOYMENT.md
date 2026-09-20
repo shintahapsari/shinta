@@ -29,9 +29,10 @@ Email    (Resend)  ->  API key Resend Anda sendiri   ->  re_xxx
 4. **Network Access** → **Add IP Address** → **Allow Access from Anywhere** (`0.0.0.0/0`) → **Confirm**.
 5. **Database** → **Connect** → **Drivers** → salin connection string:
    ```
-   mongodb+srv://shinta:<password>@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority
+   mongodb+srv://shinta:<password>@cluster0.vdbfaw5.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
    ```
-   Ganti `<password>`. Nama database diatur lewat env `DB_NAME` (mis. `shinta`).
+   Ganti `<password>` (tanpa tanda `<` `>`). Nama database diatur lewat env `DB_NAME` — sudah dipakai: **`simetri_tip`** (berisi 5 akun staf hasil seed otomatis saat backend pertama kali start).
+   > ✅ Sudah diverifikasi terhubung (Sep 2026): ping OK, seed OK, login admin OK.
 
 ---
 
@@ -74,7 +75,7 @@ Untuk update terbaru, gunakan tombol **Save to Github** di kolom chat Emergent (
    | Key | Value |
    |---|---|
    | `MONGO_URL` | connection string Atlas (Langkah 1.5) |
-   | `DB_NAME` | `shinta` |
+   | `DB_NAME` | `simetri_tip` |
    | `JWT_SECRET` | `c3f7a1e9d84b2f6c05a7e1b93d6f8c24a9e0b7d1f3c584a6e2b9d0c7f1a3e5b8` |
    | `ADMIN_EMAIL` | `shintasyafrina9801@gmail.com` |
    | `ADMIN_PASSWORD` | `AdminUNEJ2026!` |
@@ -129,8 +130,8 @@ Untuk update terbaru, gunakan tombol **Save to Github** di kolom chat Emergent (
 
 **Backend (Render/Railway):**
 ```
-MONGO_URL=mongodb+srv://shinta:<password>@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority
-DB_NAME=shinta
+MONGO_URL=mongodb+srv://shinta:<password>@cluster0.vdbfaw5.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
+DB_NAME=simetri_tip
 JWT_SECRET=c3f7a1e9d84b2f6c05a7e1b93d6f8c24a9e0b7d1f3c584a6e2b9d0c7f1a3e5b8
 ADMIN_EMAIL=shintasyafrina9801@gmail.com
 ADMIN_PASSWORD=AdminUNEJ2026!
