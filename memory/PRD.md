@@ -7,11 +7,11 @@ Sistem Terintegrasi Kemitraan Teknologi Industri Pertanian — Program Studi Tek
 - Frontend: React (JSX) + Tailwind + shadcn/ui + Recharts + framer-motion, react-router, sonner toasts.
 - Backend: FastAPI (server.py + auth.py, email_service.py, storage.py, exporters.py, seed.py). All routes /api.
 - DB: MongoDB (uuid string ids, ISO datetimes). Collections: users, magic_links, partners, documents (versioned/immutable), implementations, audit_logs, notifications, files, meta.
-- Auth: JWT (bcrypt) httpOnly cookies for staff; students login via UNEJ SSO (Apereo CAS 3.0, sso.unej.ac.id) — backend/sso.py, GET /api/auth/sso/login → CAS → GET /api/auth/sso/callback?ticket → validate → cookies → redirect /dashboard (errors → /login?sso_error=CODE). Magic-link removed.
+- Auth: JWT (bcrypt) httpOnly cookies for staff; students login with admin-provisioned username+password (POST /api/auth/login accepts {username|email, password}); users.username unique sparse, users.email unique sparse. Admin creates students via POST /api/users (role mahasiswa, username, nim, password) or bulk POST /api/users/bulk-mahasiswa (lines 'username,password,nama[,nim]'). SSO CAS code (backend/sso.py + /api/auth/sso/*) kept but not used in UI. Magic-link removed.
 - Integrations: Resend (Emergent-managed) magic-link email; Emergent Object Storage (file uploads); server-side PDF (reportlab) & Excel (openpyxl) export.
 
 ## Roles (RBAC)
-- mahasiswa: SSO UNEJ login (auto-create on first login); own implementations only; read partners/docs.
+- mahasiswa: username+password login (accounts provisioned by admin, single or bulk); own implementations only; read partners/docs.
 - admin (Shinta Syafrina): full access + user management.
 - tim_kerjasama (Alif Rizki): manage partners (incl. edit & delete), documents, implementations, verify approvals.
 - tim_mbkm (Arga Hita, Winda Amilia): manage cooperation/implementation incl. Kampus Berdampak/MBKM + verify.
@@ -30,7 +30,7 @@ Sistem Terintegrasi Kemitraan Teknologi Industri Pertanian — Program Studi Tek
 
 ## Deployment eksternal (2026-06/09)
 - DB dipindah ke MongoDB Atlas: `cluster0.vdbfaw5.mongodb.net`, DB_NAME `simetri_tip`. Ping OK, seed 5 akun staf OK, login admin & tim_kerjasama 200, /api/partners 200.
-- SSO UNEJ (2026-09): magic-link dihapus; env BACKEND_PUBLIC_URL untuk callback. Mock-success test: backend/tests/test_sso_flow.py. Catatan: CAS UNEJ mungkin perlu pendaftaran service URL ke UPT TIK.
+- Login mahasiswa (2026-09): username+password yang disediakan admin (menggantikan SSO/magic-link di UI). UsersPage: tambah mahasiswa, Impor Mahasiswa massal, ganti kata sandi, aktif/nonaktif, filter. SSO CAS tetap ada di backend (tidak dipakai UI).
 - Email: Gmail SMTP via smtplib (SMTP_USER + SMTP_PASSWORD App Password); Resend dihapus. Kredensial Gmail terpasang (Sep 2026), uji kirim ke shintasyafrina9801@gmail.com berhasil. Storage: masih Emergent proxy (perlu migrasi S3/R2). Panduan: /app/DEPLOYMENT.md.
 
 ## Verified

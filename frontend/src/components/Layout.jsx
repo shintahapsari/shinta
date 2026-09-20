@@ -131,7 +131,7 @@ export default function Layout({ children }) {
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>
                   <div className="font-semibold">{user.name}</div>
-                  <div className="text-xs text-slate-500 font-normal">{user.email}</div>
+                  <div className="text-xs text-slate-500 font-normal">{user.username || user.email}</div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} data-testid="logout-button" className="text-red-600">

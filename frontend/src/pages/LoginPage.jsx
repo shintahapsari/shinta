@@ -1,41 +1,29 @@
 import { useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { API, formatApiErrorDetail } from "@/lib/api";
+import { formatApiErrorDetail } from "@/lib/api";
 import { INSTITUTION_FULL } from "@/lib/constants";
-import { Sprout, Mail, Lock, Loader2, ArrowRight, GraduationCap, ShieldCheck, ExternalLink } from "lucide-react";
+import { Sprout, Mail, Lock, Loader2, ArrowRight, GraduationCap, ShieldCheck, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 
-const SSO_ERRORS = {
-  INVALID_TICKET: "Tiket SSO tidak valid atau sudah digunakan. Silakan coba lagi.",
-  INVALID_SERVICE: "Aplikasi ini belum terdaftar di SSO UNEJ. Hubungi UPT TIK untuk mendaftarkan URL aplikasi.",
-  UNAUTHORIZED_SERVICE: "Aplikasi ini belum diizinkan oleh SSO UNEJ. Hubungi UPT TIK untuk mendaftarkan URL aplikasi.",
-  UNAUTHORIZED_SERVICE_PROXY: "Aplikasi ini belum diizinkan oleh SSO UNEJ. Hubungi UPT TIK.",
-  CAS_UNAVAILABLE: "Server SSO UNEJ tidak dapat dihubungi. Coba beberapa saat lagi.",
-  MISSING_TICKET: "Login SSO dibatalkan atau tidak lengkap.",
-  ACCOUNT_DISABLED: "Akun Anda dinonaktifkan. Hubungi admin.",
-};
-
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [params] = useSearchParams();
-  const ssoCode = params.get("sso_error");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [username, setUsername] = useState("");
+  const [sPassword, setSPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [ssoLoading, setSsoLoading] = useState(false);
-  const [error, setError] = useState(ssoCode ? (SSO_ERRORS[ssoCode] || `Login SSO gagal (${ssoCode}).`) : "");
+  const [error, setError] = useState("");
 
-  const handleStaff = async (e) => {
-    e.preventDefault();
+  const submit = async (payload) => {
     setError(""); setLoading(true);
     try {
-      const u = await login(email.trim().toLowerCase(), password);
+      const u = await login(payload);
       toast.success(`Selamat datang, ${u.name}`);
       navigate("/dashboard");
     } catch (err) {
@@ -43,10 +31,8 @@ export default function LoginPage() {
     } finally { setLoading(false); }
   };
 
-  const handleSso = () => {
-    setSsoLoading(true);
-    window.location.href = `${API}/auth/sso/login`;
-  };
+  const handleStaff = (e) => { e.preventDefault(); submit({ email: email.trim().toLowerCase(), password }); };
+  const handleStudent = (e) => { e.preventDefault(); submit({ username: username.trim().toLowerCase(), password: sPassword }); };
 
   return (
     <div className="min-h-screen flex">
@@ -102,8 +88,7 @@ export default function LoginPage() {
           <h1 className="font-display font-extrabold text-2xl sm:text-3xl text-[#0B2545]">Masuk ke Sistem</h1>
           <p className="text-slate-500 text-sm mt-1 mb-6">Pilih metode sesuai peran Anda.</p>
 
-          <Tabs defaultValue={ssoCode ? "mahasiswa" : "staff"} className="w-full"
-            onValueChange={(v) => { setError(""); if (v === "mahasiswa" && !ssoCode) handleSso(); }}>
+          <Tabs defaultValue="staff" className="w-full" onValueChange={() => setError("")}>
             <TabsList className="grid grid-cols-2 w-full mb-6">
               <TabsTrigger value="staff" data-testid="tab-staff"><ShieldCheck className="w-4 h-4 mr-1.5" /> Staf</TabsTrigger>
               <TabsTrigger value="mahasiswa" data-testid="tab-mahasiswa"><GraduationCap className="w-4 h-4 mr-1.5" /> Mahasiswa</TabsTrigger>
@@ -141,21 +126,29 @@ export default function LoginPage() {
             </TabsContent>
 
             <TabsContent value="mahasiswa">
-              <div className="space-y-4">
-                <div data-testid="sso-redirect-info" className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 leading-relaxed">
-                  {ssoLoading ? (
-                    <span className="inline-flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Mengarahkan ke <span className="font-mono text-xs">sso.unej.ac.id</span>…</span>
-                  ) : (
-                    <>Mahasiswa masuk menggunakan akun <span className="font-semibold text-[#0B2545]">SSO Universitas Jember</span>
-                    {" "}(username &amp; kata sandi yang sama dengan SISTER). Setelah berhasil login di SSO, Anda otomatis masuk ke sistem.</>
-                  )}
+              <form onSubmit={handleStudent} className="space-y-4">
+                <div>
+                  <Label htmlFor="username">Username Mahasiswa</Label>
+                  <div className="relative mt-1.5">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Input id="username" data-testid="student-username-input" required value={username} autoCapitalize="none"
+                      onChange={(e) => setUsername(e.target.value)} placeholder="username dari prodi" className="pl-10" />
+                  </div>
                 </div>
-                <Button type="button" onClick={handleSso} data-testid="sso-login-button" disabled={ssoLoading}
+                <div>
+                  <Label htmlFor="spassword">Kata Sandi</Label>
+                  <div className="relative mt-1.5">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Input id="spassword" data-testid="student-password-input" type="password" required value={sPassword}
+                      onChange={(e) => setSPassword(e.target.value)} placeholder="••••••••" className="pl-10" />
+                  </div>
+                </div>
+                <Button type="submit" data-testid="student-login-button" disabled={loading}
                   className="w-full bg-[#F5A623] hover:bg-[#e0951a] text-[#0B2545] font-semibold active:scale-95 transition-transform">
-                  {ssoLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Masuk dengan SSO UNEJ <ExternalLink className="w-4 h-4 ml-1.5" /></>}
+                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Masuk <ArrowRight className="w-4 h-4 ml-1.5" /></>}
                 </Button>
-                <p className="text-xs text-slate-400 text-center">Akun mahasiswa dibuat otomatis saat pertama kali masuk.</p>
-              </div>
+                <p className="text-xs text-slate-400 text-center">Username &amp; kata sandi diberikan oleh Tim Kerja Sama / Admin prodi.</p>
+              </form>
             </TabsContent>
           </Tabs>
         </div>

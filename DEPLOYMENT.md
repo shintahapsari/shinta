@@ -51,18 +51,15 @@ Email dikirim langsung dari akun Gmail Anda (gratis, kuota ±500 email/hari). Ti
 
 ---
 
-## LANGKAH 2b — SSO UNEJ (Login Mahasiswa)
+## LANGKAH 2b — Login Mahasiswa (Username & Kata Sandi)
 
-Mahasiswa masuk lewat tombol **"Masuk dengan SSO UNEJ"** → diarahkan ke `https://sso.unej.ac.id/cas/login`
-→ setelah berhasil otomatis kembali ke aplikasi dan akun mahasiswa dibuat otomatis (role `mahasiswa`).
-Protokol: Apereo CAS 3.0 (`/cas/login`, `/cas/p3/serviceValidate`). Tidak butuh API key.
+Mahasiswa masuk dengan **username + kata sandi** yang disediakan admin (tanpa email, tanpa SSO).
+Admin membuat akun di menu **Manajemen Pengguna**: *Tambah Pengguna* (peran Mahasiswa) atau
+*Impor Mahasiswa* massal — satu baris per akun: `username,password,nama,nim`.
+Admin juga dapat mengganti kata sandi dan menonaktifkan akun dari halaman yang sama.
 
-1. Set env `BACKEND_PUBLIC_URL` di Render = URL backend (mis. `https://shinta-backend.onrender.com`).
-   Callback yang dipakai: `<BACKEND_PUBLIC_URL>/api/auth/sso/callback`.
-2. **Penting:** server CAS UNEJ mungkin hanya melayani aplikasi yang **terdaftar**. Jika setelah login di SSO
-   muncul pesan *"Aplikasi ini belum terdaftar di SSO UNEJ"* (kode `INVALID_SERVICE`/`UNAUTHORIZED_SERVICE`),
-   ajukan pendaftaran URL callback di atas ke **UPT TIK Universitas Jember** (https://tik.unej.ac.id/layanan/).
-3. Env opsional: `CAS_BASE_URL` (default `https://sso.unej.ac.id/cas`).
+> Integrasi SSO UNEJ (CAS) tetap tersedia di backend (`/api/auth/sso/login`) bila nanti ingin diaktifkan;
+> env `BACKEND_PUBLIC_URL` hanya diperlukan untuk itu.
 
 ---
 

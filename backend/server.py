@@ -65,16 +65,26 @@ def derive_counts(doc: dict) -> dict:
 
 # ---------------- Models ----------------
 class LoginIn(BaseModel):
-    email: EmailStr
+    email: Optional[str] = None
+    username: Optional[str] = None
     password: str
 
 
 class UserCreate(BaseModel):
-    email: EmailStr
+    email: Optional[EmailStr] = None
+    username: Optional[str] = None
+    nim: Optional[str] = None
     name: str
     role: str
     password: Optional[str] = None
     jabatan: Optional[str] = None
+
+
+class BulkStudentsIn(BaseModel):
+    lines: str
+
+
+USERNAME_RE = re.compile(r"^[a-z0-9._-]{3,40}$")
 
 
 class PartnerIn(BaseModel):
@@ -160,7 +170,7 @@ def require_roles(*roles):
 
 
 def set_auth_cookies(response: Response, user: dict):
-    access = A.create_access_token(user["id"], user["email"], user["role"])
+    access = A.create_access_token(user["id"], user.get("email") or user.get("username", ""), user["role"])
     refresh = A.create_refresh_token(user["id"])
     response.set_cookie("access_token", access, httponly=True, secure=True, samesite="none", max_age=A.ACCESS_MINUTES * 60, path="/")
     response.set_cookie("refresh_token", refresh, httponly=True, secure=True, samesite="none", max_age=A.REFRESH_DAYS * 86400, path="/")
@@ -200,14 +210,17 @@ def public_user(u: dict) -> dict:
 # ---------------- Auth routes ----------------
 @api.post("/auth/login")
 async def login(body: LoginIn, response: Response, request: Request):
-    email = body.email.lower()
-    user = await db.users.find_one({"email": email})
+    ident = (body.username or body.email or "").strip().lower()
+    if not ident:
+        raise HTTPException(status_code=400, detail="Username atau email wajib diisi")
+    user = await db.users.find_one({"$or": [{"username": ident}, {"email": ident}]})
     if not user or not user.get("password_hash") or not A.verify_password(body.password, user["password_hash"]):
-        raise HTTPException(status_code=401, detail="Email atau kata sandi salah")
+        raise HTTPException(status_code=401, detail="Username/email atau kata sandi salah")
     if not user.get("is_active", True):
         raise HTTPException(status_code=403, detail="Akun dinonaktifkan")
     set_auth_cookies(response, user)
-    await audit(user, "LOGIN", "auth", user["id"], "Login staf berhasil", request)
+    await db.users.update_one({"id": user["id"]}, {"$set": {"last_login_at": now_iso()}})
+    await audit(user, "LOGIN", "auth", user["id"], f"Login {user['role']} berhasil", request)
     return public_user(user)
 
 
@@ -301,19 +314,63 @@ async def list_users(user=Depends(require_roles("admin"))):
 async def create_user(body: UserCreate, request: Request, user=Depends(require_roles("admin"))):
     if body.role not in ROLES:
         raise HTTPException(status_code=400, detail="Peran tidak valid")
-    if await db.users.find_one({"email": body.email.lower()}):
+    email = body.email.lower() if body.email else None
+    username = (body.username or "").strip().lower() or None
+    if body.role in STAFF_ROLES and not email:
+        raise HTTPException(status_code=400, detail="Email wajib untuk akun staf")
+    if body.role == "mahasiswa" and not username:
+        raise HTTPException(status_code=400, detail="Username wajib untuk akun mahasiswa")
+    if not body.password:
+        raise HTTPException(status_code=400, detail="Kata sandi wajib diisi")
+    if username and not USERNAME_RE.match(username):
+        raise HTTPException(status_code=400, detail="Username 3-40 karakter: huruf kecil, angka, titik, strip, underscore")
+    if email and await db.users.find_one({"email": email}):
         raise HTTPException(status_code=400, detail="Email sudah terdaftar")
+    if username and await db.users.find_one({"username": username}):
+        raise HTTPException(status_code=400, detail="Username sudah terdaftar")
     doc = {
-        "id": new_id(), "email": body.email.lower(), "name": body.name, "role": body.role,
-        "jabatan": body.jabatan or "", "is_active": True, "created_at": now_iso(),
+        "id": new_id(), "name": body.name, "role": body.role, "jabatan": body.jabatan or "",
+        "nim": (body.nim or "").strip(), "is_active": True, "created_at": now_iso(),
+        "password_hash": A.hash_password(body.password),
     }
-    if body.role in STAFF_ROLES:
-        if not body.password:
-            raise HTTPException(status_code=400, detail="Kata sandi wajib untuk akun staf")
-        doc["password_hash"] = A.hash_password(body.password)
+    if email:
+        doc["email"] = email
+    if username:
+        doc["username"] = username
     await db.users.insert_one(dict(doc))
-    await audit(user, "CREATE", "user", doc["id"], f"Membuat pengguna {body.email} ({body.role})", request)
+    await audit(user, "CREATE", "user", doc["id"], f"Membuat pengguna {username or email} ({body.role})", request)
     return public_user(doc)
+
+
+@api.post("/users/bulk-mahasiswa")
+async def bulk_students(body: BulkStudentsIn, request: Request, user=Depends(require_roles("admin"))):
+    """Each line: username,password,nama[,nim]"""
+    created, errors = [], []
+    for i, raw in enumerate(body.lines.splitlines(), start=1):
+        line = raw.strip()
+        if not line:
+            continue
+        parts = [p.strip() for p in re.split(r"[,;\t]", line)]
+        if len(parts) < 3 or not parts[0] or not parts[1] or not parts[2]:
+            errors.append(f"Baris {i}: format harus username,password,nama[,nim]")
+            continue
+        username = parts[0].lower()
+        if not USERNAME_RE.match(username):
+            errors.append(f"Baris {i}: username '{parts[0]}' tidak valid")
+            continue
+        if await db.users.find_one({"username": username}):
+            errors.append(f"Baris {i}: username '{username}' sudah terdaftar")
+            continue
+        doc = {
+            "id": new_id(), "username": username, "name": parts[2], "role": "mahasiswa",
+            "nim": parts[3] if len(parts) > 3 else "", "jabatan": "", "is_active": True,
+            "created_at": now_iso(), "password_hash": A.hash_password(parts[1]),
+        }
+        await db.users.insert_one(dict(doc))
+        created.append(username)
+    if created:
+        await audit(user, "CREATE", "user", "bulk", f"Impor massal {len(created)} akun mahasiswa", request)
+    return {"created": len(created), "usernames": created, "errors": errors}
 
 
 @api.put("/users/{uid}")
@@ -919,7 +976,11 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup():
-    await db.users.create_index("email", unique=True)
+    idx = await db.users.index_information()
+    if "email_1" in idx and not idx["email_1"].get("sparse"):
+        await db.users.drop_index("email_1")
+    await db.users.create_index("email", unique=True, sparse=True)
+    await db.users.create_index("username", unique=True, sparse=True)
     try:
         ST.init_storage()
         logger.info("Storage initialized")
