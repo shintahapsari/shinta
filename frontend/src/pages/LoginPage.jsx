@@ -102,7 +102,8 @@ export default function LoginPage() {
           <h1 className="font-display font-extrabold text-2xl sm:text-3xl text-[#0B2545]">Masuk ke Sistem</h1>
           <p className="text-slate-500 text-sm mt-1 mb-6">Pilih metode sesuai peran Anda.</p>
 
-          <Tabs defaultValue={ssoCode ? "mahasiswa" : "staff"} className="w-full" onValueChange={() => setError("")}>
+          <Tabs defaultValue={ssoCode ? "mahasiswa" : "staff"} className="w-full"
+            onValueChange={(v) => { setError(""); if (v === "mahasiswa" && !ssoCode) handleSso(); }}>
             <TabsList className="grid grid-cols-2 w-full mb-6">
               <TabsTrigger value="staff" data-testid="tab-staff"><ShieldCheck className="w-4 h-4 mr-1.5" /> Staf</TabsTrigger>
               <TabsTrigger value="mahasiswa" data-testid="tab-mahasiswa"><GraduationCap className="w-4 h-4 mr-1.5" /> Mahasiswa</TabsTrigger>
@@ -141,10 +142,13 @@ export default function LoginPage() {
 
             <TabsContent value="mahasiswa">
               <div className="space-y-4">
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 leading-relaxed">
-                  Mahasiswa masuk menggunakan akun <span className="font-semibold text-[#0B2545]">SSO Universitas Jember</span>
-                  {" "}(username &amp; kata sandi yang sama dengan SISTER). Anda akan diarahkan ke
-                  {" "}<span className="font-mono text-xs">sso.unej.ac.id</span> dan otomatis kembali ke sistem setelah berhasil.
+                <div data-testid="sso-redirect-info" className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 leading-relaxed">
+                  {ssoLoading ? (
+                    <span className="inline-flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Mengarahkan ke <span className="font-mono text-xs">sso.unej.ac.id</span>…</span>
+                  ) : (
+                    <>Mahasiswa masuk menggunakan akun <span className="font-semibold text-[#0B2545]">SSO Universitas Jember</span>
+                    {" "}(username &amp; kata sandi yang sama dengan SISTER). Setelah berhasil login di SSO, Anda otomatis masuk ke sistem.</>
+                  )}
                 </div>
                 <Button type="button" onClick={handleSso} data-testid="sso-login-button" disabled={ssoLoading}
                   className="w-full bg-[#F5A623] hover:bg-[#e0951a] text-[#0B2545] font-semibold active:scale-95 transition-transform">
