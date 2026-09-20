@@ -26,24 +26,13 @@ export function AuthProvider({ children }) {
     return data;
   };
 
-  const magicRequest = async (email, name) => {
-    const { data } = await api.post("/auth/magic-link/request", { email, name });
-    return data;
-  };
-
-  const magicVerify = async (token) => {
-    const { data } = await api.post("/auth/magic-link/verify", { token });
-    setUser(data);
-    return data;
-  };
-
   const logout = async () => {
     try { await api.post("/auth/logout"); } catch { /* ignore */ }
     setUser(false);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, magicRequest, magicVerify, logout, refresh }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, refresh }}>
       {children}
     </AuthContext.Provider>
   );

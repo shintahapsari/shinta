@@ -5,7 +5,6 @@ import { AuthProvider } from "@/context/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Layout from "@/components/Layout";
 import LoginPage from "@/pages/LoginPage";
-import VerifyPage from "@/pages/VerifyPage";
 import DashboardPage from "@/pages/DashboardPage";
 import PartnersPage from "@/pages/PartnersPage";
 import PartnerDetailPage from "@/pages/PartnerDetailPage";
@@ -33,7 +32,6 @@ function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/verify" element={<VerifyPage />} />
             <Route path="/dashboard" element={<Protected><DashboardPage /></Protected>} />
             <Route path="/partners" element={<Protected><PartnersPage /></Protected>} />
             <Route path="/partners/:id" element={<Protected><PartnerDetailPage /></Protected>} />

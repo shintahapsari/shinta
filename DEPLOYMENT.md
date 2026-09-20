@@ -46,8 +46,23 @@ Email dikirim langsung dari akun Gmail Anda (gratis, kuota ±500 email/hari). Ti
 4. `SMTP_USER` = alamat Gmail Anda (mis. `shintasyafrina9801@gmail.com`).
 
 > Kode memakai `smtplib` bawaan Python (tanpa library tambahan). Bila `SMTP_USER`/`SMTP_PASSWORD` kosong,
-> email otomatis di-skip (aplikasi tetap jalan, tidak crash). Untuk login mahasiswa, tautan magic-link juga
-> ditampilkan langsung di layar login sebagai cadangan.
+> email otomatis di-skip (aplikasi tetap jalan, tidak crash). Email hanya dipakai untuk pengingat dokumen
+> kedaluwarsa — login mahasiswa **tidak** lagi memakai email.
+
+---
+
+## LANGKAH 2b — SSO UNEJ (Login Mahasiswa)
+
+Mahasiswa masuk lewat tombol **"Masuk dengan SSO UNEJ"** → diarahkan ke `https://sso.unej.ac.id/cas/login`
+→ setelah berhasil otomatis kembali ke aplikasi dan akun mahasiswa dibuat otomatis (role `mahasiswa`).
+Protokol: Apereo CAS 3.0 (`/cas/login`, `/cas/p3/serviceValidate`). Tidak butuh API key.
+
+1. Set env `BACKEND_PUBLIC_URL` di Render = URL backend (mis. `https://shinta-backend.onrender.com`).
+   Callback yang dipakai: `<BACKEND_PUBLIC_URL>/api/auth/sso/callback`.
+2. **Penting:** server CAS UNEJ mungkin hanya melayani aplikasi yang **terdaftar**. Jika setelah login di SSO
+   muncul pesan *"Aplikasi ini belum terdaftar di SSO UNEJ"* (kode `INVALID_SERVICE`/`UNAUTHORIZED_SERVICE`),
+   ajukan pendaftaran URL callback di atas ke **UPT TIK Universitas Jember** (https://tik.unej.ac.id/layanan/).
+3. Env opsional: `CAS_BASE_URL` (default `https://sso.unej.ac.id/cas`).
 
 ---
 
@@ -81,6 +96,7 @@ Untuk update terbaru, gunakan tombol **Save to Github** di kolom chat Emergent (
    | `ADMIN_EMAIL` | `shintasyafrina9801@gmail.com` |
    | `ADMIN_PASSWORD` | `AdminUNEJ2026!` |
    | `FRONTEND_URL` | (isi setelah Vercel jadi, mis. `https://shinta.vercel.app`) |
+   | `BACKEND_PUBLIC_URL` | URL backend Render ini, mis. `https://shinta-backend.onrender.com` (dipakai untuk callback SSO UNEJ) |
    | `CORS_ORIGIN_REGEX` | `https://.*\.vercel\.app` |
    | `SMTP_USER` | alamat Gmail Anda (Langkah 2) |
    | `SMTP_PASSWORD` | App Password 16 karakter (Langkah 2) |
@@ -137,6 +153,7 @@ JWT_SECRET=c3f7a1e9d84b2f6c05a7e1b93d6f8c24a9e0b7d1f3c584a6e2b9d0c7f1a3e5b8
 ADMIN_EMAIL=shintasyafrina9801@gmail.com
 ADMIN_PASSWORD=AdminUNEJ2026!
 FRONTEND_URL=https://shinta.vercel.app
+BACKEND_PUBLIC_URL=https://shinta-backend.onrender.com
 CORS_ORIGIN_REGEX=https://.*\.vercel\.app
 SMTP_USER=shintasyafrina9801@gmail.com
 SMTP_PASSWORD=xxxx xxxx xxxx xxxx

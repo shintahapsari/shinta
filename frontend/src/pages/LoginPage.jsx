@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { formatApiErrorDetail } from "@/lib/api";
+import { API, formatApiErrorDetail } from "@/lib/api";
 import { INSTITUTION_FULL } from "@/lib/constants";
 import { Sprout, Mail, Lock, Loader2, ArrowRight, GraduationCap, ShieldCheck, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,15 +10,26 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 
+const SSO_ERRORS = {
+  INVALID_TICKET: "Tiket SSO tidak valid atau sudah digunakan. Silakan coba lagi.",
+  INVALID_SERVICE: "Aplikasi ini belum terdaftar di SSO UNEJ. Hubungi UPT TIK untuk mendaftarkan URL aplikasi.",
+  UNAUTHORIZED_SERVICE: "Aplikasi ini belum diizinkan oleh SSO UNEJ. Hubungi UPT TIK untuk mendaftarkan URL aplikasi.",
+  UNAUTHORIZED_SERVICE_PROXY: "Aplikasi ini belum diizinkan oleh SSO UNEJ. Hubungi UPT TIK.",
+  CAS_UNAVAILABLE: "Server SSO UNEJ tidak dapat dihubungi. Coba beberapa saat lagi.",
+  MISSING_TICKET: "Login SSO dibatalkan atau tidak lengkap.",
+  ACCOUNT_DISABLED: "Akun Anda dinonaktifkan. Hubungi admin.",
+};
+
 export default function LoginPage() {
-  const { login, magicRequest } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const ssoCode = params.get("sso_error");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [mEmail, setMEmail] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [magicSent, setMagicSent] = useState(null);
+  const [ssoLoading, setSsoLoading] = useState(false);
+  const [error, setError] = useState(ssoCode ? (SSO_ERRORS[ssoCode] || `Login SSO gagal (${ssoCode}).`) : "");
 
   const handleStaff = async (e) => {
     e.preventDefault();
@@ -32,16 +43,9 @@ export default function LoginPage() {
     } finally { setLoading(false); }
   };
 
-  const handleMagic = async (e) => {
-    e.preventDefault();
-    setError(""); setLoading(true);
-    try {
-      const data = await magicRequest(mEmail.trim().toLowerCase());
-      setMagicSent(data);
-      toast.success("Tautan masuk telah dikirim ke email Anda");
-    } catch (err) {
-      setError(formatApiErrorDetail(err.response?.data?.detail) || err.message);
-    } finally { setLoading(false); }
+  const handleSso = () => {
+    setSsoLoading(true);
+    window.location.href = `${API}/auth/sso/login`;
   };
 
   return (
@@ -98,7 +102,7 @@ export default function LoginPage() {
           <h1 className="font-display font-extrabold text-2xl sm:text-3xl text-[#0B2545]">Masuk ke Sistem</h1>
           <p className="text-slate-500 text-sm mt-1 mb-6">Pilih metode sesuai peran Anda.</p>
 
-          <Tabs defaultValue="staff" className="w-full" onValueChange={() => { setError(""); setMagicSent(null); }}>
+          <Tabs defaultValue={ssoCode ? "mahasiswa" : "staff"} className="w-full" onValueChange={() => setError("")}>
             <TabsList className="grid grid-cols-2 w-full mb-6">
               <TabsTrigger value="staff" data-testid="tab-staff"><ShieldCheck className="w-4 h-4 mr-1.5" /> Staf</TabsTrigger>
               <TabsTrigger value="mahasiswa" data-testid="tab-mahasiswa"><GraduationCap className="w-4 h-4 mr-1.5" /> Mahasiswa</TabsTrigger>
@@ -136,41 +140,18 @@ export default function LoginPage() {
             </TabsContent>
 
             <TabsContent value="mahasiswa">
-              {!magicSent ? (
-                <form onSubmit={handleMagic} className="space-y-4">
-                  <div>
-                    <Label htmlFor="memail">Email Kampus (@unej.ac.id)</Label>
-                    <div className="relative mt-1.5">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                      <Input id="memail" data-testid="student-email-input" type="email" required value={mEmail}
-                        onChange={(e) => setMEmail(e.target.value)} placeholder="211710101001@student.unej.ac.id" className="pl-10" />
-                    </div>
-                  </div>
-                  <Button type="submit" data-testid="magic-link-button" disabled={loading}
-                    className="w-full bg-[#F5A623] hover:bg-[#e0951a] text-[#0B2545] font-semibold active:scale-95 transition-transform">
-                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Kirim Tautan Masuk <Mail className="w-4 h-4 ml-1.5" /></>}
-                  </Button>
-                  <p className="text-xs text-slate-400 text-center">Login tanpa kata sandi via tautan email.</p>
-                </form>
-              ) : (
-                <div data-testid="magic-sent-panel" className="space-y-4 text-center">
-                  <div className="w-14 h-14 rounded-full bg-emerald-50 flex items-center justify-center mx-auto">
-                    <Mail className="w-7 h-7 text-emerald-600" />
-                  </div>
-                  <p className="text-sm text-slate-600">
-                    Tautan masuk telah dikirim ke <span className="font-semibold">{mEmail}</span>. Periksa email Anda.
-                  </p>
-                  {magicSent.dev_magic_link && (
-                    <a href={magicSent.dev_magic_link} data-testid="dev-magic-link"
-                      className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#0B2545] px-4 py-2 rounded-lg bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-colors">
-                      Buka Tautan (Demo) <ExternalLink className="w-4 h-4" />
-                    </a>
-                  )}
-                  <button onClick={() => setMagicSent(null)} className="block mx-auto text-xs text-slate-400 hover:text-slate-600">
-                    Kirim ulang
-                  </button>
+              <div className="space-y-4">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 leading-relaxed">
+                  Mahasiswa masuk menggunakan akun <span className="font-semibold text-[#0B2545]">SSO Universitas Jember</span>
+                  {" "}(username &amp; kata sandi yang sama dengan SISTER). Anda akan diarahkan ke
+                  {" "}<span className="font-mono text-xs">sso.unej.ac.id</span> dan otomatis kembali ke sistem setelah berhasil.
                 </div>
-              )}
+                <Button type="button" onClick={handleSso} data-testid="sso-login-button" disabled={ssoLoading}
+                  className="w-full bg-[#F5A623] hover:bg-[#e0951a] text-[#0B2545] font-semibold active:scale-95 transition-transform">
+                  {ssoLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Masuk dengan SSO UNEJ <ExternalLink className="w-4 h-4 ml-1.5" /></>}
+                </Button>
+                <p className="text-xs text-slate-400 text-center">Akun mahasiswa dibuat otomatis saat pertama kali masuk.</p>
+              </div>
             </TabsContent>
           </Tabs>
         </div>

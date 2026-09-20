@@ -1,14 +1,12 @@
-"""Pure auth helpers: password hashing, JWT, magic-link tokens. No DB access."""
+"""Pure auth helpers: password hashing and JWT. No DB access."""
 import os
 import jwt
 import bcrypt
-import secrets
 from datetime import datetime, timezone, timedelta
 
 JWT_ALGORITHM = "HS256"
 ACCESS_MINUTES = 60 * 12
 REFRESH_DAYS = 7
-MAGIC_LINK_MINUTES = 30
 
 
 def get_jwt_secret() -> str:
@@ -50,5 +48,3 @@ def decode_token(token: str) -> dict:
     return jwt.decode(token, get_jwt_secret(), algorithms=[JWT_ALGORITHM])
 
 
-def new_magic_token() -> str:
-    return secrets.token_urlsafe(32)

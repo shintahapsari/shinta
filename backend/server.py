@@ -8,25 +8,27 @@ import re
 import uuid
 import unicodedata
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import FastAPI, APIRouter, Request, Response, HTTPException, Depends, UploadFile, File, Query, Header, BackgroundTasks
-from starlette.responses import Response as StarletteResponse
+from starlette.responses import Response as StarletteResponse, RedirectResponse
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, EmailStr
 
 import auth as A
 import email_service as ES
 import storage as ST
 import exporters as EX
+import sso as SSO
 
 mongo_url = os.environ["MONGO_URL"]
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ["DB_NAME"]]
 
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+BACKEND_PUBLIC_URL = os.environ.get("BACKEND_PUBLIC_URL", FRONTEND_URL).rstrip("/")
 UNEJ_EMAIL_RE = re.compile(r"^[a-z0-9._%+-]+@([a-z0-9-]+\.)*unej\.ac\.id$", re.I)
 
 app = FastAPI(title="SIMETRI-TIP UNEJ")
@@ -65,15 +67,6 @@ def derive_counts(doc: dict) -> dict:
 class LoginIn(BaseModel):
     email: EmailStr
     password: str
-
-
-class MagicRequestIn(BaseModel):
-    email: EmailStr
-    name: Optional[str] = None
-
-
-class MagicVerifyIn(BaseModel):
-    token: str
 
 
 class UserCreate(BaseModel):
@@ -218,51 +211,52 @@ async def login(body: LoginIn, response: Response, request: Request):
     return public_user(user)
 
 
-@api.post("/auth/magic-link/request")
-async def magic_request(body: MagicRequestIn, request: Request):
-    email = body.email.lower()
-    if not UNEJ_EMAIL_RE.match(email):
-        raise HTTPException(status_code=400, detail="Gunakan email resmi @unej.ac.id")
-    token = A.new_magic_token()
-    await db.magic_links.insert_one({
-        "id": new_id(),
-        "token": token,
-        "email": email,
-        "name": body.name or email.split("@")[0],
-        "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=A.MAGIC_LINK_MINUTES)).isoformat(),
-        "used": False,
-        "created_at": now_iso(),
-    })
-    link = f"{FRONTEND_URL}/verify?token={token}"
-    email_id = await ES.send_email(
-        to=email,
-        subject="Tautan Masuk — Kemitraan TIP Universitas Jember",
-        html=ES.magic_link_html(body.name or email.split("@")[0], link),
-    )
-    return {"message": "Tautan masuk telah dikirim ke email Anda", "email_sent": bool(email_id), "dev_magic_link": link}
+def _sso_service_url() -> str:
+    return f"{BACKEND_PUBLIC_URL}/api/auth/sso/callback"
 
 
-@api.post("/auth/magic-link/verify")
-async def magic_verify(body: MagicVerifyIn, response: Response, request: Request):
-    rec = await db.magic_links.find_one({"token": body.token})
-    if not rec or rec.get("used"):
-        raise HTTPException(status_code=400, detail="Tautan tidak valid atau sudah digunakan")
-    if datetime.fromisoformat(rec["expires_at"]) < datetime.now(timezone.utc):
-        raise HTTPException(status_code=400, detail="Tautan sudah kedaluwarsa")
-    await db.magic_links.update_one({"token": body.token}, {"$set": {"used": True}})
-    email = rec["email"]
-    user = await db.users.find_one({"email": email})
-    if not user:
-        nim_match = re.match(r"^(\d+)@", email)
+@api.get("/auth/sso/login")
+async def sso_login():
+    return RedirectResponse(SSO.login_url(_sso_service_url()), status_code=302)
+
+
+@api.get("/auth/sso/callback")
+async def sso_callback(request: Request, ticket: Optional[str] = None):
+    fail = lambda code: RedirectResponse(f"{FRONTEND_URL}/login?sso_error={code}", status_code=302)  # noqa: E731
+    if not ticket or not ticket.startswith("ST-"):
+        return fail("MISSING_TICKET")
+    try:
+        info = await SSO.validate_ticket(ticket, _sso_service_url())
+    except SSO.CASError as e:
+        logger.warning(f"SSO validation failed: {e}")
+        return fail(e.code)
+    except Exception as e:
+        logger.error(f"SSO unavailable: {e}")
+        return fail("CAS_UNAVAILABLE")
+
+    username = info["username"]
+    email = info["email"] or f"{username}@sso.unej.ac.id".lower()
+    user = await db.users.find_one({"sso_username": username}) or await db.users.find_one({"email": email})
+    if user:
+        upd = {"sso_username": username, "last_login_at": now_iso()}
+        if not user.get("email") and email:
+            upd["email"] = email
+        await db.users.update_one({"id": user["id"]}, {"$set": upd})
+        user.update(upd)
+    else:
+        nim_match = re.match(r"^(\d+)(@|$)", username) or re.match(r"^(\d+)@", email)
         user = {
-            "id": new_id(), "email": email, "name": rec.get("name", email.split("@")[0]).replace(".", " ").title(),
-            "role": "mahasiswa", "nim": nim_match.group(1) if nim_match else "", "is_active": True,
-            "created_at": now_iso(),
+            "id": new_id(), "email": email, "name": info["name"], "role": "mahasiswa",
+            "nim": nim_match.group(1) if nim_match else "", "sso_username": username,
+            "is_active": True, "created_at": now_iso(), "last_login_at": now_iso(),
         }
         await db.users.insert_one(dict(user))
+    if not user.get("is_active", True):
+        return fail("ACCOUNT_DISABLED")
+    response = RedirectResponse(f"{FRONTEND_URL}/dashboard", status_code=302)
     set_auth_cookies(response, user)
-    await audit(user, "LOGIN", "auth", user["id"], "Login mahasiswa via magic-link", request)
-    return public_user(user)
+    await audit(user, "LOGIN", "auth", user["id"], "Login via SSO UNEJ", request)
+    return response
 
 
 @api.post("/auth/logout")
@@ -926,7 +920,6 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup():
     await db.users.create_index("email", unique=True)
-    await db.magic_links.create_index("token")
     try:
         ST.init_storage()
         logger.info("Storage initialized")
