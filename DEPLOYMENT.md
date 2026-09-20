@@ -1,5 +1,9 @@
 # Panduan Deploy di Luar Emergent (Vercel + Render + MongoDB Atlas)
 
+> **Status saat ini (Sep 2026):**
+> ✅ Langkah 1 (Atlas) selesai & terverifikasi · ✅ Langkah 2 (Gmail SMTP) selesai & email uji terkirim ·
+> ✅ Login mahasiswa username/kata sandi siap · ⬜ Langkah 3–6 (GitHub, Render, Vercel) **Anda yang jalankan** mengikuti panduan ini.
+
 Aplikasi ini = **Frontend React (CRA/craco)** + **Backend FastAPI** + **MongoDB**.
 
 Vercel **tidak** cocok menjalankan FastAPI berat dalam satu project (batas ukuran serverless).
@@ -43,7 +47,10 @@ Email dikirim langsung dari akun Gmail Anda (gratis, kuota ±500 email/hari). Ti
 1. Buka https://myaccount.google.com/security → aktifkan **Verifikasi 2 Langkah** (wajib).
 2. Buka https://myaccount.google.com/apppasswords → nama aplikasi mis. `Kemitraan TIP` → **Create**.
 3. Salin sandi 16 karakter yang muncul (spasi boleh ikut, akan dihapus otomatis). Ini nilai `SMTP_PASSWORD`.
-4. `SMTP_USER` = alamat Gmail Anda (mis. `shintasyafrina9801@gmail.com`).
+4. `SMTP_USER` = alamat Gmail Anda.
+
+> ✅ Sudah dilakukan: `SMTP_USER=shintasyafrina9801@gmail.com`, App Password `apihfmkpnrqyijcs` — email uji berhasil terkirim.
+> Masukkan dua nilai yang sama ke Environment Variables Render (Langkah 4).
 
 > Kode memakai `smtplib` bawaan Python (tanpa library tambahan). Bila `SMTP_USER`/`SMTP_PASSWORD` kosong,
 > email otomatis di-skip (aplikasi tetap jalan, tidak crash). Email hanya dipakai untuk pengingat dokumen
@@ -93,10 +100,10 @@ Untuk update terbaru, gunakan tombol **Save to Github** di kolom chat Emergent (
    | `ADMIN_EMAIL` | `shintasyafrina9801@gmail.com` |
    | `ADMIN_PASSWORD` | `AdminUNEJ2026!` |
    | `FRONTEND_URL` | (isi setelah Vercel jadi, mis. `https://shinta.vercel.app`) |
-   | `BACKEND_PUBLIC_URL` | URL backend Render ini, mis. `https://shinta-backend.onrender.com` (dipakai untuk callback SSO UNEJ) |
+   | `BACKEND_PUBLIC_URL` | *(opsional, hanya jika SSO UNEJ diaktifkan)* URL backend Render ini |
    | `CORS_ORIGIN_REGEX` | `https://.*\.vercel\.app` |
-   | `SMTP_USER` | alamat Gmail Anda (Langkah 2) |
-   | `SMTP_PASSWORD` | App Password 16 karakter (Langkah 2) |
+   | `SMTP_USER` | `shintasyafrina9801@gmail.com` |
+   | `SMTP_PASSWORD` | `apihfmkpnrqyijcs` |
    | `EMAIL_FROM_NAME` | `Kemitraan TIP Universitas Jember` |
    | `WEBHOOK_CRON_SECRET` | `8eab41845e60120b88617081504e49fefc1bc42f99587595cca30f0958b5d59d` |
    | `EMERGENT_LLM_KEY` | `sk-emergent-e9aD74aCb1cA2B3F77` *(opsional, hanya untuk fitur upload berkas — lihat catatan)* |
@@ -135,8 +142,30 @@ Untuk update terbaru, gunakan tombol **Save to Github** di kolom chat Emergent (
 2. Buka website Vercel → login tab **Staf**:
    - Email: `shintasyafrina9801@gmail.com`
    - Password: `AdminUNEJ2026!`
-3. Uji email: minta tautan masuk mahasiswa / picu pengingat → cek email masuk & log Render.
-4. Cek data di Atlas (**Browse Collections**).
+3. Buat akun mahasiswa: menu **Manajemen Pengguna → Tambah Pengguna** (peran Mahasiswa) atau **Impor Mahasiswa**.
+   Lalu keluar dan uji login tab **Mahasiswa** dengan username & kata sandi tersebut.
+4. Uji email pengingat (dari terminal/Postman):
+   ```
+   curl -X POST https://shinta-backend.onrender.com/api/cron/expiry-reminder \
+        -H "Authorization: Bearer 8eab41845e60120b88617081504e49fefc1bc42f99587595cca30f0958b5d59d"
+   ```
+   → balasan `{"status":"accepted"}`; email masuk ke Tim Kerja Sama & admin bila ada dokumen ≤90 hari kedaluwarsa.
+5. Cek data di Atlas (**Browse Collections**, database `simetri_tip`).
+
+---
+
+## LANGKAH 7 — Pengingat Mingguan Otomatis (cron-job.org)
+
+Cron bawaan Emergent tidak berlaku di luar platform. Gunakan **cron-job.org** (gratis):
+
+1. Daftar di https://cron-job.org → **Create cronjob**.
+2. **URL:** `https://shinta-backend.onrender.com/api/cron/expiry-reminder`
+3. **Schedule:** setiap **Senin 08:00**, zona waktu **Asia/Jakarta**.
+4. **Advanced → Request method:** `POST`; **Headers:** tambah
+   `Authorization` = `Bearer 8eab41845e60120b88617081504e49fefc1bc42f99587595cca30f0958b5d59d`
+5. Simpan → klik **Run now** untuk uji; status harus `200`.
+
+> Bonus: cronjob ini juga "membangunkan" Render Free yang sedang tidur.
 
 ---
 
@@ -150,10 +179,9 @@ JWT_SECRET=c3f7a1e9d84b2f6c05a7e1b93d6f8c24a9e0b7d1f3c584a6e2b9d0c7f1a3e5b8
 ADMIN_EMAIL=shintasyafrina9801@gmail.com
 ADMIN_PASSWORD=AdminUNEJ2026!
 FRONTEND_URL=https://shinta.vercel.app
-BACKEND_PUBLIC_URL=https://shinta-backend.onrender.com
 CORS_ORIGIN_REGEX=https://.*\.vercel\.app
 SMTP_USER=shintasyafrina9801@gmail.com
-SMTP_PASSWORD=xxxx xxxx xxxx xxxx
+SMTP_PASSWORD=apihfmkpnrqyijcs
 EMAIL_FROM_NAME=Kemitraan TIP Universitas Jember
 WEBHOOK_CRON_SECRET=8eab41845e60120b88617081504e49fefc1bc42f99587595cca30f0958b5d59d
 EMERGENT_LLM_KEY=sk-emergent-e9aD74aCb1cA2B3F77
@@ -172,10 +200,13 @@ REACT_APP_BACKEND_URL=https://shinta-backend.onrender.com
 - **Upload berkas** (`backend/storage.py`) MASIH memakai object storage bawaan Emergent via `EMERGENT_LLM_KEY`.
   Di luar Emergent ini mungkin tetap jalan selama key valid, tapi TIDAK DIJAMIN. Kode tidak crash bila gagal.
   Untuk 100% mandiri, minta saya pindahkan ke **Cloudflare R2 / AWS S3** dengan kredensial Anda.
-- **Cron pengingat mingguan:** dulu pakai cron Emergent. Di luar Emergent gunakan **cron-job.org** (gratis)
-  yang memanggil `POST https://<backend>/api/cron/expiry-reminder` dengan header
-  `Authorization: Bearer <WEBHOOK_CRON_SECRET>`.
-- **Keamanan produksi:** sebaiknya ganti `JWT_SECRET` & `ADMIN_PASSWORD` dengan nilai baru saat live.
+- **Cron pengingat mingguan:** lihat Langkah 7 (cron-job.org).
+- **Login:** Staf memakai email + kata sandi; Mahasiswa memakai username + kata sandi buatan admin.
+  Tidak ada lagi ketergantungan email/Resend/SSO untuk login.
+- **Keamanan produksi:** sebaiknya ganti `JWT_SECRET`, `ADMIN_PASSWORD`, dan `WEBHOOK_CRON_SECRET` dengan nilai baru saat live
+  (buat dengan `python -c "import secrets; print(secrets.token_hex(32))"`). Kata sandi staf default `Staff2026!` segera diganti dari menu Manajemen Pengguna.
+- **Akun awal (seed otomatis):** admin `shintasyafrina9801@gmail.com`; staf `alif.rizki@unej.ac.id`, `arga.hita@unej.ac.id`,
+  `winda.amilia@unej.ac.id`, `manajemen@unej.ac.id` (sandi `Staff2026!`).
 
 ---
 
@@ -184,3 +215,4 @@ REACT_APP_BACKEND_URL=https://shinta-backend.onrender.com
 - Vercel Hobby: **Gratis**
 - Render Free: **Gratis** (idle sleep) atau Railway ~$5 kredit/bulan
 - Gmail SMTP: **Gratis** ±500 email/hari
+- cron-job.org: **Gratis**

@@ -31,7 +31,7 @@ Sistem Terintegrasi Kemitraan Teknologi Industri Pertanian — Program Studi Tek
 ## Deployment eksternal (2026-06/09)
 - DB dipindah ke MongoDB Atlas: `cluster0.vdbfaw5.mongodb.net`, DB_NAME `simetri_tip`. Ping OK, seed 5 akun staf OK, login admin & tim_kerjasama 200, /api/partners 200.
 - Login mahasiswa (2026-09): username+password yang disediakan admin (menggantikan SSO/magic-link di UI). UsersPage: tambah mahasiswa, Impor Mahasiswa massal, ganti kata sandi, aktif/nonaktif, filter. SSO CAS tetap ada di backend (tidak dipakai UI).
-- Email: Gmail SMTP via smtplib (SMTP_USER + SMTP_PASSWORD App Password); Resend dihapus. Kredensial Gmail terpasang (Sep 2026), uji kirim ke shintasyafrina9801@gmail.com berhasil. Storage: masih Emergent proxy (perlu migrasi S3/R2). Panduan: /app/DEPLOYMENT.md.
+- Email: Gmail SMTP via smtplib (SMTP_USER + SMTP_PASSWORD App Password); Resend dihapus. Kredensial Gmail terpasang (Sep 2026), uji kirim ke shintasyafrina9801@gmail.com berhasil. Storage: masih Emergent proxy (perlu migrasi S3/R2). Panduan: /app/DEPLOYMENT.md (diperbarui Sep 2026: status, Gmail SMTP, login mahasiswa, Langkah 7 cron-job.org).
 
 ## Verified
 - Backend 36/37 automated tests + manual curl. Duplicate detection fixed (unicode NFKD). tim_kerjasama edit/delete partners 200; impl edit + kampus_berdampak + approve 200; document expiry flags correct.
